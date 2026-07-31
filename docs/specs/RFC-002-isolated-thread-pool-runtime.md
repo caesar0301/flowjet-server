@@ -150,7 +150,9 @@ Precedence:
 1. If `metadata["workspace"]` is a non-empty string → expand/resolve as absolute path (must exist or be creatable; reject empty / relative-only without resolve).
 2. Else `$FLOWJET_HOME/data/workspaces/ws_<sha256(session)[:16]>` (create parents).
 
-Default agent security policy SHOULD deny paths outside the workspace (`allow_paths_outside_workspace: false`).
+FlowJet MUST set `security.allow_paths_outside_workspace = false` in code after
+loading nano configuration. A local, mounted, or client-selected nano.yml cannot
+weaken this invariant.
 
 ### 5.7 Session Identity
 

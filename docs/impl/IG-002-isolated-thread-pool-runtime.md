@@ -201,7 +201,9 @@ graph; abnormal turns recycle it before the worker is made available.
 | `FLOWJET_REUSE_RUNNER` | `reuse_runner` | `true` |
 | `FLOWJET_REQUEST_TIMEOUT` | `request_timeout` | `0` |
 
-`config/nano.yml`: `security.allow_paths_outside_workspace: false`.
+`config/nano.yml` sets `security.allow_paths_outside_workspace: false`.
+`create_nano_agent_instance` also overwrites the loaded config field to `False`;
+this code-level invariant prevents external nano.yml files from enabling escape.
 
 Default dependency: `soothe-nano`. Dev optional extra: `[dev]`.
 

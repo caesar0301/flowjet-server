@@ -19,6 +19,10 @@ def create_nano_agent_instance(config_path: str | Path | None = None) -> Any:
         raise RuntimeError("soothe-nano is not installed. Reinstall flowjet-server.") from exc
     path = Path(config_path).expanduser() if config_path else SOOTHE_HOME / "config" / "nano.yml"
     config = SootheConfig.from_yaml_file(str(path)) if path.is_file() else SootheConfig()
+    # This is a server-owned invariant, not a deployer preference. Requests
+    # carry an isolated workspace root and filesystem tools must never escape
+    # it, even when a user-supplied or mounted nano.yml enables wider access.
+    config.security.allow_paths_outside_workspace = False
     return create_nano_agent(config)
 
 

@@ -24,7 +24,10 @@ pytest.importorskip("langchain_core", reason="nano extra not installed")
 from langchain_core.messages import AIMessage, ToolMessage  # noqa: E402
 
 from flowjet_server.agent_runtime.isolation.request import IsolatedRunRequest  # noqa: E402
-from flowjet_server.bridges.nano.adapter import NanoAgentAdapter  # noqa: E402
+from flowjet_server.bridges.nano.adapter import (  # noqa: E402
+    NanoAgentAdapter,
+    create_nano_agent_instance,
+)
 from flowjet_server.bridges.nano.backend import NanoRuntimeBackend  # noqa: E402
 
 
@@ -126,6 +129,27 @@ def isolated_request() -> IsolatedRunRequest:
         model="default",
         workspace=Path("/tmp/flowjet-test-workspace"),
     )
+
+
+def test_flowjet_forces_workspace_boundary(monkeypatch, tmp_path):
+    import soothe_nano
+
+    config_path = tmp_path / "nano.yml"
+    config_path.write_text(
+        "security:\n  allow_paths_outside_workspace: true\n",
+        encoding="utf-8",
+    )
+    captured: list[Any] = []
+    sentinel = object()
+
+    def create_agent(config):
+        captured.append(config)
+        return sentinel
+
+    monkeypatch.setattr(soothe_nano, "create_nano_agent", create_agent)
+
+    assert create_nano_agent_instance(config_path) is sentinel
+    assert captured[0].security.allow_paths_outside_workspace is False
 
 
 @pytest.mark.asyncio

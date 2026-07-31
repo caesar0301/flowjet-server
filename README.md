@@ -50,6 +50,9 @@ Useful Make targets: `make help`, `make test`, `make test-sdk`, `make check`, `m
 | `FLOWJET_REUSE_RUNNER` | `true` | Reuse agent adapter per worker |
 | `FLOWJET_REQUEST_TIMEOUT` | `0` | Per-run timeout seconds (`0` = none) |
 
+FlowJet always forces nano's `security.allow_paths_outside_workspace` to `false`,
+even if the loaded nano.yml requests otherwise.
+
 ## License
 
 MIT
