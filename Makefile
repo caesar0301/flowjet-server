@@ -4,8 +4,8 @@ HOST ?= 0.0.0.0
 PORT ?= 8080
 
 .PHONY: help sync sync-dev sync-nano format format-check lint lint-fix \
-	test test-sdk test-unit check run serve examples \
-	example-create example-stream build clean
+	test test-sdk test-unit check run serve run-nano examples \
+	examples-sdk examples-http examples-e2e build clean
 
 help:
 	@echo "flowjet-server"
@@ -21,10 +21,12 @@ help:
 	@echo "  make test-unit      - Run unit/API tests (exclude live SDK suite)"
 	@echo "  make test-sdk       - Run OpenAI SDK compatibility tests"
 	@echo "  make check          - format-check + lint + test"
-	@echo "  make run / serve    - Start flowjet-server (HOST=$(HOST) PORT=$(PORT))"
-	@echo "  make examples       - Print how to run OpenAI SDK examples"
-	@echo "  make example-create - Run examples/01_create_response.py"
-	@echo "  make example-stream - Run examples/02_stream_response.py"
+	@echo "  make run / serve    - Start with deterministic fake backend"
+	@echo "  make run-nano       - Start with real soothe-nano agent"
+	@echo "  make examples       - Show how to run end-to-end examples"
+	@echo "  make examples-sdk   - E2E via OpenAI Python SDK"
+	@echo "  make examples-http  - E2E via raw HTTP (httpx)"
+	@echo "  make examples-e2e   - Run both E2E example scripts"
 	@echo "  make build          - Build dist/"
 	@echo "  make clean          - Remove build/cache artifacts"
 
@@ -63,21 +65,25 @@ check: format-check lint test
 run serve:
 	FLOWJET_HOST=$(HOST) FLOWJET_PORT=$(PORT) $(UV_RUN) flowjet-server
 
+run-nano:
+	FLOWJET_BACKEND=nano FLOWJET_HOST=$(HOST) FLOWJET_PORT=$(PORT) $(UV_RUN) flowjet-server
+
 examples:
-	@echo "Start the server in another terminal:  make run"
+	@echo "Start a real agent in another terminal:  make sync-nano && make run-nano"
+	@echo "(Use make run only for deterministic fake/Echo demos.)"
 	@echo "Then:"
-	@echo "  make example-create"
-	@echo "  make example-stream"
-	@echo "  uv run python examples/03_models_retrieve_delete.py"
-	@echo "  uv run python examples/04_flowjet_progress.py"
-	@echo "  uv run python examples/05_flowjet_developer.py"
+	@echo "  make examples-sdk     # OpenAI SDK end-to-end"
+	@echo "  make examples-http    # Raw HTTP end-to-end"
+	@echo "  make examples-e2e     # both"
 	@echo "See examples/README.md"
 
-example-create:
-	$(UV_RUN) python examples/01_create_response.py
+examples-sdk:
+	$(UV_RUN) python examples/e2e_openai_sdk.py
 
-example-stream:
-	$(UV_RUN) python examples/02_stream_response.py
+examples-http:
+	$(UV_RUN) python examples/e2e_http_api.py
+
+examples-e2e: examples-sdk examples-http
 
 build:
 	rm -rf dist/

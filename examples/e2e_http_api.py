@@ -32,6 +32,7 @@ from _client import (
     make_http,
     output_text_from_dict,
     parse_sse,
+    require_completed,
     section,
 )
 
@@ -92,9 +93,9 @@ def main() -> None:
     events = parse_sse(stream.text)
     types = [e.get("type") for e in events]
     print("events:", ", ".join(t for t in types if t))
+    require_completed(events, "report projection")
     assert "response.created" in types
     assert "response.output_text.delta" in types
-    assert "response.completed" in types
     completed = next(e for e in events if e.get("type") == "response.completed")
     print("completed text:", output_text_from_dict(completed["response"]))
 
@@ -117,6 +118,7 @@ def main() -> None:
     pev = parse_sse(progress.text)
     ptypes = [e.get("type") for e in pev]
     print("events:", ", ".join(t for t in ptypes if t))
+    require_completed(pev, "progress projection")
     for e in pev:
         if e.get("type") == "response.flowjet.progress":
             print(f"[progress] {e.get('stage')}: {e.get('message')}")
@@ -130,6 +132,8 @@ def main() -> None:
             "model": model,
             "input": "Raw SSE developer.",
             "stream": True,
+            # emit_tools is honoured only by the fake backend; a real agent
+            # decides for itself whether the prompt warrants a tool call.
             "flowjet": {
                 "projection": "developer",
                 "metadata": {"emit_tools": True, "suite": "e2e_http_api"},
@@ -140,17 +144,18 @@ def main() -> None:
     dev = parse_sse(developer.text)
     dtypes = [e.get("type") for e in dev]
     print("events:", ", ".join(t for t in dtypes if t))
+    require_completed(dev, "developer projection")
     for e in dev:
         if e.get("type") == "response.flowjet.tool.started":
             print(f"[tool started] {e.get('tool')}")
         elif e.get("type") == "response.flowjet.tool.completed":
             print(
-                f"[tool done] {e.get('tool')} ok={e.get('ok')} "
-                f"duration_ms={e.get('duration_ms')}"
+                f"[tool done] {e.get('tool')} ok={e.get('ok')} duration_ms={e.get('duration_ms')}"
             )
-            assert "arguments" not in e
-    assert "response.flowjet.tool.started" in dtypes
-    assert "response.flowjet.tool.completed" in dtypes
+        # Whatever the backend did, tool arguments must never reach the wire.
+        assert "arguments" not in e
+    if "response.flowjet.tool.started" not in dtypes:
+        print("[no tool calls] a real agent only emits these when the prompt needs a tool")
 
     # ---------------------------------------------------------------- delete
     section(f"DELETE /v1/responses/{rid}")

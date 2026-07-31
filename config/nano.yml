@@ -1,0 +1,76 @@
+# Default nano profile for flowjet-server images.
+# Sourced from soothe config/develop/nano.yml (dashscope provider only).
+
+providers:
+  - name: dashscope
+    provider_type: openai
+    api_base_url: "${DASHSCOPE_BASE_URL}"
+    api_key: "${DASHSCOPE_API_KEY}"
+    models:
+      - glm-5.2
+      - qwen3.7-plus
+      - kimi-k2.5
+      - kimi-k2.7-code
+      - MiniMax-M3
+      - text-embedding-v4
+
+router_profiles:
+  - name: production
+    router:
+      default: "dashscope:glm-5.2"
+      fast: "dashscope:qwen3.6-flash"
+      think: "dashscope:glm-5.2"
+      image: "dashscope:qwen3.7-plus"
+      ocr: "dashscope:qwen3.7-plus"
+
+  - name: production-minimax
+    router:
+      default: "dashscope:MiniMax-M3"
+      fast: "dashscope:qwen3.6-flash"
+      think: "dashscope:MiniMax-M3"
+      image: "dashscope:MiniMax-M3"
+      ocr: "dashscope:qwen3.7-plus"
+
+active_router_profile: production
+
+embedding_profile:
+  - model_role: dashscope:text-embedding-v4
+    embedding_dims: 1536
+
+# Local develop defaults to SQLite (one process mode for the whole runtime).
+# Flip to postgresql + pgvector when exercising the Postgres path against
+# docker compose / PgBouncer — do not mix backends in one process.
+persistence:
+  default_backend: sqlite
+  # Unused while default_backend is sqlite; kept for a quick Postgres flip:
+  postgres_base_dsn: "postgresql://postgres:postgres@127.0.0.1:6432"
+  postgres:
+    pool_max_idle_seconds: 90
+    pool_max_lifetime_seconds: 900
+
+security:
+  allow_paths_outside_workspace: true
+
+observability:
+  log_file_level: DEBUG
+  langfuse:
+    enabled: false
+    public_key: pk-lf-soothe-local
+    secret_key: sk-lf-soothe-local
+    host: http://localhost:3300
+    trace_name: soothe-dev
+    tags:
+      - soothe
+
+vector_stores:
+  - name: sqlite_vec_dev
+    provider_type: sqlite_vec
+
+vector_store_router:
+  default: sqlite_vec_dev:soothe_default
+
+tools:
+  wizsearch:
+    default_engines:
+      - duckduckgo
+      - bing

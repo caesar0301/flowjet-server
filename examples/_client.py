@@ -92,6 +92,19 @@ def parse_sse(body: str) -> list[dict[str, Any]]:
     return events
 
 
+def require_completed(events: list[dict[str, Any]], label: str) -> None:
+    """Stop with the server's own error when a streamed run did not complete."""
+    for event in events:
+        if event.get("type") != "response.failed":
+            continue
+        error = (event.get("response") or {}).get("error") or {}
+        message = error.get("message") or "no error message returned"
+        raise SystemExit(f"{label}: the agent run failed — {message}")
+    types = [e.get("type") for e in events]
+    if "response.completed" not in types:
+        raise SystemExit(f"{label}: stream ended without response.completed; saw {types}")
+
+
 def section(title: str) -> None:
     print()
     print(f"== {title} ==")

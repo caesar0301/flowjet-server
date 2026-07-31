@@ -14,15 +14,22 @@ make sync-dev
 make run
 ```
 
-In another terminal, run the OpenAI SDK examples:
+This starts the deterministic fake backend. To use the real soothe-nano agent:
 
 ```bash
-make example-create
-make example-stream
-# or: make examples   # lists all example commands
+make sync-nano
+make run-nano
 ```
 
-See [examples/README.md](examples/README.md) for the full set (streaming, retrieve/delete, FlowJet progress/developer projections).
+In another terminal, run the end-to-end API examples against either server:
+
+```bash
+make examples-sdk    # OpenAI Python SDK walkthrough
+make examples-http   # Raw HTTP (health + all /v1 endpoints + SSE)
+# or: make examples-e2e
+```
+
+See [examples/README.md](examples/README.md).
 
 ```python
 from openai import OpenAI

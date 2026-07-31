@@ -1,0 +1,30 @@
+# Git and IDE
+.git
+.gitignore
+.cursor
+.claude
+.idea
+.vscode
+.platonic.yml
+
+# Python environments and caches
+.venv
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+**/*.egg-info
+
+# Tests, examples, docs (not needed at runtime)
+tests
+examples
+docs
+
+# Build artifacts
+dist
+build
+
+# Local env
+.env
+**/.DS_Store

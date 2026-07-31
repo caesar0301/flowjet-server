@@ -27,9 +27,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from openai import NotFoundError
-
 from _client import event_extra, make_client, output_text, section
+from openai import NotFoundError
 
 
 def main() -> None:
@@ -132,10 +131,7 @@ def main() -> None:
     ) as stream:
         for event in stream:
             if event.type == "response.flowjet.progress":
-                print(
-                    f"[progress] {event_extra(event, 'stage')}: "
-                    f"{event_extra(event, 'message')}"
-                )
+                print(f"[progress] {event_extra(event, 'stage')}: {event_extra(event, 'message')}")
             elif event.type == "response.output_text.delta":
                 print(event.delta, end="", flush=True)
         progress_final = stream.get_final_response()
@@ -147,6 +143,8 @@ def main() -> None:
     with client.responses.stream(
         model=model,
         input="Developer projection demo.",
+        # emit_tools is honoured only by the fake backend; a real agent decides
+        # for itself whether the prompt warrants a tool call.
         extra_body={
             "flowjet": {
                 "projection": "developer",
@@ -154,8 +152,10 @@ def main() -> None:
             }
         },
     ) as stream:
+        saw_tool = False
         for event in stream:
             if event.type == "response.flowjet.tool.started":
+                saw_tool = True
                 print(f"[tool started] {event_extra(event, 'tool')}")
             elif event.type == "response.flowjet.tool.completed":
                 print(
@@ -167,6 +167,8 @@ def main() -> None:
                 print(event.delta, end="", flush=True)
         dev_final = stream.get_final_response()
     print()
+    if not saw_tool:
+        print("[no tool calls] a real agent only emits these when the prompt needs a tool")
     print(f"final={output_text(dev_final)!r}")
 
     # ----------------------------------------------------------- error path

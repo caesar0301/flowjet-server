@@ -6,6 +6,7 @@ Requires optional extra: ``pip install flowjet-server[nano]``.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -75,21 +76,33 @@ def _map_custom(data: dict[str, Any]) -> Progress | None:
 class NanoRuntimeBackend:
     """RuntimeBackend backed by soothe-nano (optional dependency)."""
 
-    def __init__(self, models: list[str] | None = None, agent: Any | None = None) -> None:
+    def __init__(
+        self,
+        models: list[str] | None = None,
+        agent: Any | None = None,
+        config_path: str | Path | None = None,
+    ) -> None:
         self._models = models or ["default"]
         self._agent = agent
+        self._config_path = Path(config_path).expanduser() if config_path else None
 
     def _ensure_agent(self) -> Any:
         if self._agent is not None:
             return self._agent
         try:
-            from soothe_nano import SootheConfig, create_nano_agent
+            from soothe_nano import create_nano_agent
+            from soothe_nano.config import SOOTHE_HOME, SootheConfig
         except ImportError as exc:  # pragma: no cover
             raise RuntimeError(
                 "soothe-nano is not installed. Install flowjet-server[nano] "
                 "or set FLOWJET_BACKEND=fake."
             ) from exc
-        config = SootheConfig()  # type: ignore[call-arg]
+        config_path = self._config_path or SOOTHE_HOME / "config" / "nano.yml"
+        config = (
+            SootheConfig.from_yaml_file(str(config_path))
+            if config_path.is_file()
+            else SootheConfig()
+        )
         self._agent = create_nano_agent(config)
         return self._agent
 
@@ -113,7 +126,7 @@ class NanoRuntimeBackend:
         messages = [HumanMessage(content=request.input_text)]
         config = {"configurable": {"thread_id": session}}
         answer = ""
-        saw_tools = False
+        composing = False
         open_tools: dict[str, str] = {}
 
         try:
@@ -146,7 +159,10 @@ class NanoRuntimeBackend:
                 if isinstance(message_obj, AIMessage):
                     tool_calls = getattr(message_obj, "tool_calls", None) or []
                     if tool_calls:
-                        saw_tools = True
+                        # Any prior assistant text was pre-tool narration, not
+                        # the final answer. Match flowjet-agent's reset behavior.
+                        answer = ""
+                        composing = False
                         for tc in tool_calls:
                             if isinstance(tc, dict):
                                 name = tc.get("name")
@@ -160,18 +176,24 @@ class NanoRuntimeBackend:
                                 yield ToolStarted(tool=str(name), call_id=call)
                         continue
                     text = _ai_text(message_obj)
-                    if text and not saw_tools:
-                        # Before any tools: treat as ephemeral narration → Progress only
-                        yield Progress(stage="Working", message=text[:120])
-                    elif text:
-                        # After tools / final path: stream as output
+                    if text:
+                        # Buffer until the run ends. Emitting immediately could
+                        # leak pre-tool narration that is later superseded.
                         if text.startswith(answer):
                             delta = text[len(answer) :]
+                        elif answer.startswith(text):
+                            delta = ""
                         else:
                             delta = text
                         if delta:
                             answer = text if text.startswith(answer) else answer + delta
-                            yield OutputTextDelta(delta=delta)
+                            # A milestone, not a transcript: nano streams the
+                            # answer token by token, and forwarding each chunk
+                            # would both spam the client and surface narration
+                            # that a later tool call may supersede.
+                            if not composing:
+                                composing = True
+                                yield Progress(stage="Working", message="Composing response…")
 
                 elif isinstance(message_obj, ToolMessage):
                     tc_id = getattr(message_obj, "tool_call_id", None)
@@ -184,11 +206,9 @@ class NanoRuntimeBackend:
                     ok = status != "error"
                     call = str(tc_id) if tc_id else None
                     yield ToolCompleted(tool=str(name), ok=ok, call_id=call)
-                    saw_tools = True
 
-            if not answer:
-                # Fallback: some agents only expose final text on graph result
-                answer = answer or ""
+            if answer:
+                yield OutputTextDelta(delta=answer)
             yield RunCompleted(output_text=answer)
         except Exception as exc:  # noqa: BLE001
             yield RunFailed(message=str(exc) or type(exc).__name__)
