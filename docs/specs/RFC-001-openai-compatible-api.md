@@ -359,6 +359,7 @@ Compatible core fields:
 |-------|------|---------|-------------|
 | `projection` | `"report"` \| `"progress"` \| `"developer"` | `"report"` | Visibility mode |
 | `session` | string | allocate new | Opaque session / thread id |
+| `interaction_mode` | `"agent"` \| `"ask"` | `"agent"` | soothe-nano dual mode: full agent vs hard read-only ask |
 | `metadata` | object | omit | Opaque client metadata |
 
 ### 10.5 Response Object (non-stream and `response.completed`)

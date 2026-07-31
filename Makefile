@@ -4,7 +4,7 @@ HOST ?= 0.0.0.0
 PORT ?= 8080
 
 .PHONY: help sync sync-dev format format-check lint lint-fix \
-	test test-sdk test-unit check run serve examples \
+	test test-unit test-sdk test-concurrent check run serve examples \
 	examples-sdk examples-http examples-e2e build clean
 
 help:
@@ -19,6 +19,7 @@ help:
 	@echo "  make test           - Run all tests"
 	@echo "  make test-unit      - Run unit/API tests (exclude live SDK suite)"
 	@echo "  make test-sdk       - Run OpenAI SDK compatibility tests"
+	@echo "  make test-concurrent - Run concurrent load tests against real uvicorn"
 	@echo "  make check          - format-check + lint + test"
 	@echo "  make run / serve    - Start soothe-nano backend (thread-pool isolation)"
 	@echo "  make examples       - Show how to run end-to-end examples"
@@ -55,6 +56,9 @@ test-unit:
 
 test-sdk:
 	$(UV_RUN) pytest -q tests/test_openai_sdk_compat.py
+
+test-concurrent:
+	$(UV_RUN) pytest -q tests/test_concurrent.py
 
 check: format-check lint test
 

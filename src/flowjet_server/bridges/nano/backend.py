@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from flowjet_server.agent_runtime.events import ModelInfo, RunRequest, RuntimeEvent
 from flowjet_server.bridges.nano.adapter import NanoAgentAdapter, create_nano_agent_instance
-from flowjet_server.bridges.nano.mapping import iter_nano_runtime_events
+from flowjet_server.bridges.nano.mapping import iter_nano_runtime_events, resolve_interaction_mode
 
 
 class NanoRuntimeBackend:
@@ -56,6 +56,7 @@ class NanoRuntimeBackend:
             input_text=request.input_text,
             workspace=workspace,
             thread_id=session,
+            interaction_mode=resolve_interaction_mode(request.metadata),
         ):
             yield event
 

@@ -7,7 +7,7 @@ surface you need as an app developer.
 
 | Script | Client | Covers |
 |--------|--------|--------|
-| [`e2e_openai_sdk.py`](e2e_openai_sdk.py) | Official OpenAI Python SDK | `models.list`, create (string + list input), stream, retrieve, delete, FlowJet `report` / `progress` / `developer` via `extra_body`, error paths |
+| [`e2e_openai_sdk.py`](e2e_openai_sdk.py) | Official OpenAI Python SDK | `models.list`, create (string + list input), stream, retrieve, delete, FlowJet `report` / `progress` / `developer` / `interaction_mode=ask` via `extra_body`, error paths |
 | [`e2e_http_api.py`](e2e_http_api.py) | Raw `httpx` | `GET /health`, all `/v1/*` endpoints, SSE wire format, `response.flowjet.*` events, OpenAI-style error JSON |
 
 Shared helpers live in [`_client.py`](_client.py).
@@ -53,3 +53,5 @@ If the server was started with `FLOWJET_API_KEY=secret`, use the same value for 
 | Retrieve | `GET /v1/responses/{id}` | `client.responses.retrieve(id)` |
 | Delete | `DELETE /v1/responses/{id}` | `client.responses.delete(id)` |
 | FlowJet options | body `flowjet` | `extra_body={"flowjet": {...}}` |
+
+`flowjet.interaction_mode` may be `"agent"` (default) or `"ask"` (hard read-only; soothe-nano ≥ 1.1.1). See the root [README](../README.md#openai-protocol--flowjet-options).

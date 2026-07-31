@@ -27,6 +27,12 @@ _SKIP_CUSTOM_TYPES = frozenset(
 )
 
 
+def resolve_interaction_mode(metadata: dict[str, Any] | None) -> str:
+    """Return ``agent`` or ``ask`` from request metadata (default ``agent``)."""
+    raw = (metadata or {}).get("interaction_mode", "agent")
+    return raw if raw in ("agent", "ask") else "agent"
+
+
 def ai_text(message: Any) -> str:
     content = getattr(message, "content", None)
     if isinstance(content, str):
@@ -73,6 +79,7 @@ async def iter_nano_runtime_events(
     input_text: str,
     workspace: str | None = None,
     thread_id: str | None = None,
+    interaction_mode: str = "agent",
 ) -> AsyncIterator[RuntimeEvent]:
     """Drive ``agent.astream`` and yield sanitized runtime events."""
     try:
@@ -83,7 +90,8 @@ async def iter_nano_runtime_events(
     tid = thread_id or session
     yield RunStarted(run_id=run_id, model=model, session=session)
 
-    configurable: dict[str, Any] = {"thread_id": tid}
+    mode = interaction_mode if interaction_mode in ("agent", "ask") else "agent"
+    configurable: dict[str, Any] = {"thread_id": tid, "interaction_mode": mode}
     if workspace:
         configurable["workspace"] = workspace
 

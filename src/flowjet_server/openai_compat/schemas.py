@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 ProjectionMode = Literal["report", "progress", "developer"]
+InteractionMode = Literal["agent", "ask"]
 
 
 class FlowjetOptions(BaseModel):
@@ -15,6 +16,13 @@ class FlowjetOptions(BaseModel):
     projection: ProjectionMode = "report"
     session: str | None = None
     metadata: dict[str, Any] | None = None
+    interaction_mode: InteractionMode = Field(
+        default="agent",
+        description=(
+            "soothe-nano interaction mode. ``agent`` allows mutating tools; "
+            "``ask`` is hard read-only (inspect + answer only)."
+        ),
+    )
 
 
 class CreateResponseRequest(BaseModel):
@@ -52,3 +60,12 @@ def normalize_input(value: str | list[Any]) -> str:
         elif isinstance(item.get("text"), str):
             parts.append(item["text"])
     return "\n".join(parts)
+
+
+def merge_flowjet_metadata(opts: FlowjetOptions | None) -> dict[str, Any]:
+    """Build RunRequest.metadata from FlowJet options (includes interaction_mode)."""
+    if opts is None:
+        return {"interaction_mode": "agent"}
+    meta: dict[str, Any] = dict(opts.metadata or {})
+    meta["interaction_mode"] = opts.interaction_mode
+    return meta

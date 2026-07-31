@@ -8,12 +8,16 @@ from typing import Any
 
 from flowjet_server.agent_runtime.events import RunCompleted, RunFailed, RuntimeEvent
 from flowjet_server.agent_runtime.isolation.request import IsolatedRunRequest
-from flowjet_server.bridges.nano.mapping import iter_nano_runtime_events
+from flowjet_server.bridges.nano.mapping import (
+    iter_nano_runtime_events,
+    resolve_interaction_mode,
+)
 
 
 def create_nano_agent_instance(config_path: str | Path | None = None) -> Any:
+    """Build a DualModeCoreAgent (AGENT + ASK graphs) from nano config."""
     try:
-        from soothe_nano import create_nano_agent
+        from soothe_nano import create_dual_mode_nano_agent
         from soothe_nano.config import SOOTHE_HOME, SootheConfig
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError("soothe-nano is not installed. Reinstall flowjet-server.") from exc
@@ -23,11 +27,11 @@ def create_nano_agent_instance(config_path: str | Path | None = None) -> Any:
     # carry an isolated workspace root and filesystem tools must never escape
     # it, even when a user-supplied or mounted nano.yml enables wider access.
     config.security.allow_paths_outside_workspace = False
-    return create_nano_agent(config)
+    return create_dual_mode_nano_agent(config)
 
 
 class NanoAgentAdapter:
-    """AgentAdapter wrapping a SootheNanoAgent (one instance per pool worker)."""
+    """AgentAdapter wrapping DualModeCoreAgent (one instance per pool worker)."""
 
     def __init__(
         self,
@@ -59,6 +63,7 @@ class NanoAgentAdapter:
         self._active = True
         completed = False
         agent = self._ensure()
+        mode = resolve_interaction_mode(req.metadata)
         try:
             async for event in iter_nano_runtime_events(
                 agent,
@@ -68,6 +73,7 @@ class NanoAgentAdapter:
                 input_text=req.input_text,
                 workspace=str(req.workspace),
                 thread_id=req.effective_thread_id(),
+                interaction_mode=mode,
             ):
                 if isinstance(event, RunFailed):
                     self._tainted = True

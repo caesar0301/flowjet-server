@@ -36,8 +36,10 @@ class StubAgent:
 
     def __init__(self, chunks: list[tuple[str, str, Any]]) -> None:
         self._chunks = chunks
+        self.last_config: dict[str, Any] | None = None
 
-    async def astream(self, _input, **_kwargs):
+    async def astream(self, _input, **kwargs):
+        self.last_config = kwargs.get("config")
         for chunk in self._chunks:
             yield chunk
 
@@ -146,7 +148,7 @@ def test_flowjet_forces_workspace_boundary(monkeypatch, tmp_path):
         captured.append(config)
         return sentinel
 
-    monkeypatch.setattr(soothe_nano, "create_nano_agent", create_agent)
+    monkeypatch.setattr(soothe_nano, "create_dual_mode_nano_agent", create_agent)
 
     assert create_nano_agent_instance(config_path) is sentinel
     assert captured[0].security.allow_paths_outside_workspace is False
@@ -170,6 +172,37 @@ async def test_nano_adapter_recycles_agent_after_failed_turn():
         isinstance(event, RunCompleted) and event.output_text == "recovered" for event in recovered
     )
     assert adapter.generation == 2
+
+
+@pytest.mark.asyncio
+async def test_ask_interaction_mode_is_passed_in_configurable():
+    agent = StubAgent([message_chunk(AIMessage(content="readonly answer"))])
+    adapter = NanoAgentAdapter(agent=agent)
+    req = IsolatedRunRequest(
+        run_id="resp_ask",
+        session="fj-ask",
+        input_text="explain this file",
+        model="default",
+        workspace=Path("/tmp/flowjet-test-workspace"),
+        metadata={"interaction_mode": "ask"},
+    )
+    events = [event async for event in adapter.astream(req)]
+    assert any(isinstance(e, RunCompleted) for e in events)
+    assert agent.last_config is not None
+    assert agent.last_config["configurable"]["interaction_mode"] == "ask"
+    assert agent.last_config["configurable"]["thread_id"] == "fj-ask"
+
+
+def test_merge_flowjet_metadata_includes_interaction_mode():
+    from flowjet_server.openai_compat.schemas import FlowjetOptions, merge_flowjet_metadata
+
+    assert merge_flowjet_metadata(None) == {"interaction_mode": "agent"}
+    assert merge_flowjet_metadata(FlowjetOptions(interaction_mode="ask")) == {
+        "interaction_mode": "ask"
+    }
+    assert merge_flowjet_metadata(
+        FlowjetOptions(interaction_mode="ask", metadata={"suite": "t"})
+    ) == {"suite": "t", "interaction_mode": "ask"}
 
 
 @pytest.mark.asyncio

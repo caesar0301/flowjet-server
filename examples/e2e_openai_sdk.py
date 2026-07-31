@@ -171,6 +171,21 @@ def main() -> None:
         print("[no tool calls] a real agent only emits these when the prompt needs a tool")
     print(f"final={output_text(dev_final)!r}")
 
+    # ------------------------------------------------------- flowjet ask mode
+    section("flowjet.interaction_mode=ask  (hard read-only nano)")
+    ask = client.responses.create(
+        model=model,
+        input="Ask mode: briefly describe what you can inspect without editing files.",
+        extra_body={
+            "flowjet": {
+                "projection": "report",
+                "session": "fj-e2e-ask",
+                "interaction_mode": "ask",
+            }
+        },
+    )
+    print(f"status={ask.status} text={output_text(ask)!r}")
+
     # ----------------------------------------------------------- error path
     section("Error: unknown model → NotFoundError")
     try:

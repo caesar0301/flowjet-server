@@ -11,7 +11,11 @@ from flowjet_server.agent_runtime.events import RunFailed, RunRequest
 from flowjet_server.agent_runtime.protocol import RuntimeBackend
 from flowjet_server.openai_compat.errors import OpenAIError
 from flowjet_server.openai_compat.projection import ProjectionEngine
-from flowjet_server.openai_compat.schemas import CreateResponseRequest, normalize_input
+from flowjet_server.openai_compat.schemas import (
+    CreateResponseRequest,
+    merge_flowjet_metadata,
+    normalize_input,
+)
 from flowjet_server.openai_compat.store import InMemoryRunStore
 
 
@@ -92,7 +96,7 @@ class ResponseService:
         opts = body.flowjet
         projection = opts.projection if opts else "report"
         session = opts.session if opts else None
-        metadata = opts.metadata if opts else None
+        metadata = merge_flowjet_metadata(opts)
         response_id = f"resp_{uuid4().hex}"
         engine = ProjectionEngine(projection, response_id, body.model)
 
