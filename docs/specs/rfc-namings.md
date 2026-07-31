@@ -32,6 +32,13 @@ Authoritative terminology reference for flowjet-server RFC specifications.
 | Response | RFC-001 | OpenAI Responses API response object / resource |
 | Run Store | RFC-001 | Persistence for Response resources (Phase 1: in-process) |
 | Session | RFC-001 | Opaque conversation/thread id (`flowjet.session`); nano maps to `thread_id` |
+| IsolatedRunRequest | RFC-002 | Request-carried session, thread_id, workspace, and input for pool workers |
+| AgentAdapter | RFC-002 | Protocol wrapping nano or soothe runners for isolated `astream` |
+| ThreadPool (isolation) | RFC-002 | Persistent worker threads with private asyncio loops for agent runs |
+| SessionAdmission | RFC-002 | One-in-flight-per-session gate before pool submit |
+| WorkspaceResolver | RFC-002 | Maps session (+ optional metadata.workspace) to an absolute workspace path |
+| IsolatingRuntimeBackend | RFC-002 | `RuntimeBackend` that admits, resolves workspace, and submits to ThreadPool |
+| FLOWJET_HOME | RFC-002 | Root directory for per-session workspaces and local data |
 
 ### Deprecated / Avoid
 

@@ -21,6 +21,8 @@ This document tracks all RFC lifecycle events in chronological order (newest fir
 
 | Date | Event | RFC / Document | Summary |
 |------|-------|----------------|---------|
+| 2026-07-31 | Created | [IG-002](../impl/IG-002-isolated-thread-pool-runtime.md) | Thread-pool isolation implementation guide for RFC-002 |
+| 2026-07-31 | Created | [RFC-002](RFC-002-isolated-thread-pool-runtime.md) | Isolated thread-pool runtime behind RuntimeBackend |
 | 2026-07-31 | Created | [IG-001](../impl/IG-001-openai-compatible-server.md) | Phase-1 implementation guide for RFC-001 |
 | 2026-07-31 | Created | [RFC-001](RFC-001-openai-compatible-api.md) | Architecture for OpenAI-compatible API, Agent Runtime Protocol, and nano bridge |
 | 2026-07-31 | Reference Updated | rfc-index, rfc-namings, rfc-history | Initial Platonic Coding scaffold and terminology |

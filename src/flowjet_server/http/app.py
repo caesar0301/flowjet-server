@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
@@ -17,9 +19,23 @@ from flowjet_server.openai_compat.store import InMemoryRunStore
 
 def build_backend(settings: Settings) -> RuntimeBackend:
     if settings.backend == "nano":
-        from flowjet_server.bridges.nano import NanoRuntimeBackend
+        from flowjet_server.bridges.nano import build_isolating_nano_backend
 
-        return NanoRuntimeBackend(models=settings.model_ids())
+        return build_isolating_nano_backend(
+            models=settings.model_ids(),
+            config_path=settings.nano_config,
+            home=settings.home_path(),
+            pool_settings=settings.pool_settings(),
+        )
+    if settings.backend == "soothe":
+        from flowjet_server.bridges.soothe import build_isolating_soothe_backend
+
+        return build_isolating_soothe_backend(
+            models=settings.model_ids(),
+            config_path=settings.soothe_config,
+            home=settings.home_path(),
+            pool_settings=settings.pool_settings(),
+        )
     return FakeRuntimeBackend(models=settings.model_ids())
 
 
@@ -32,7 +48,16 @@ def create_app(
     store = InMemoryRunStore()
     service = ResponseService(backend=backend, store=store)
 
-    app = FastAPI(title="flowjet-server", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        yield
+        shutdown = getattr(app.state.backend, "shutdown", None)
+        if shutdown is not None:
+            result = shutdown()
+            if hasattr(result, "__await__"):
+                await result
+
+    app = FastAPI(title="flowjet-server", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
     app.state.api_key = settings.api_key
     app.state.backend = backend

@@ -14,12 +14,14 @@ Shared helpers live in [`_client.py`](_client.py).
 
 ## Run against a real agent
 
-Terminal 1 — install the nano extra and start the soothe-nano backend:
+Terminal 1 — sync deps and start the default nano backend:
 
 ```bash
-make sync-nano
-make run-nano
+make sync-dev
+make run
 ```
+
+Or explicitly: `make run-nano`, `make run-soothe`, or `make run-fake` (Echo).
 
 Terminal 2 — run an end-to-end example:
 
@@ -30,12 +32,11 @@ make examples-http   # Raw HTTP walkthrough
 make examples-e2e
 ```
 
-The output is a real model/agent response when the server is started with
-`make run-nano` (equivalent to `FLOWJET_BACKEND=nano`). It loads
-`~/.soothe/config/nano.yml` and its active router profile.
+The output is a real model/agent response when the server uses `nano` or `soothe`.
+Nano loads `~/.soothe/config/nano.yml` and its active router profile.
 
-`make run` intentionally uses the deterministic fake backend for development
-and tests; its responses begin with `Echo:` and are **not** real agent output.
+`make run-fake` uses the deterministic fake backend; its responses begin with
+`Echo:` and are **not** real agent output.
 
 ## Environment
 

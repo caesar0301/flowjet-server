@@ -43,7 +43,7 @@ COPY src /app/src
 RUN --mount=type=cache,target=/root/.cache/uv \
     set -eux; \
     uv venv /app/.venv; \
-    UV_PROJECT_ENVIRONMENT=/app/.venv uv sync --extra nano --no-dev --frozen --no-editable
+    UV_PROJECT_ENVIRONMENT=/app/.venv uv sync --no-dev --frozen --no-editable
 
 ENV PATH="/app/.venv/bin:${PATH}"
 
@@ -53,7 +53,7 @@ ENV PATH="/app/.venv/bin:${PATH}"
 FROM ${PYTHON_BASE} AS runtime
 
 LABEL org.opencontainers.image.title="FlowJet Server" \
-    org.opencontainers.image.description="OpenAI-compatible HTTP service over soothe-nano" \
+    org.opencontainers.image.description="OpenAI-compatible HTTP service over soothe" \
     org.opencontainers.image.source="https://github.com/mirasoth/flowjet-server"
 
 ENV PYTHONUNBUFFERED=1 \

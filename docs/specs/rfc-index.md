@@ -9,6 +9,7 @@ Master index of all RFC specifications.
 | RFC | Title | Kind | Status | Created | Last Updated |
 |-----|-------|------|--------|---------|--------------|
 | [RFC-001](RFC-001-openai-compatible-api.md) | OpenAI-Compatible API Architecture | Architecture Design | Draft | 2026-07-31 | 2026-07-31 |
+| [RFC-002](RFC-002-isolated-thread-pool-runtime.md) | Isolated Thread-Pool Runtime | Architecture Design | Draft | 2026-07-31 | 2026-07-31 |
 
 ---
 
@@ -39,12 +40,12 @@ Master index of all RFC specifications.
 ### By Kind
 
 - **Conceptual Design**: _None yet_
-- **Architecture Design**: [RFC-001](RFC-001-openai-compatible-api.md)
+- **Architecture Design**: [RFC-001](RFC-001-openai-compatible-api.md), [RFC-002](RFC-002-isolated-thread-pool-runtime.md)
 - **Implementation Interface Design**: _None yet_
 
 ### By Status
 
-- **Draft**: [RFC-001](RFC-001-openai-compatible-api.md)
+- **Draft**: [RFC-001](RFC-001-openai-compatible-api.md), [RFC-002](RFC-002-isolated-thread-pool-runtime.md)
 - **Review**: _None yet_
 - **Frozen**: _None yet_
 

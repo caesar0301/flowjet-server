@@ -1,5 +1,6 @@
 """soothe-nano → Agent Runtime Protocol bridge."""
 
-from flowjet_server.bridges.nano.backend import NanoRuntimeBackend
+from flowjet_server.bridges.nano.adapter import NanoAgentAdapter
+from flowjet_server.bridges.nano.backend import NanoRuntimeBackend, build_isolating_nano_backend
 
-__all__ = ["NanoRuntimeBackend"]
+__all__ = ["NanoAgentAdapter", "NanoRuntimeBackend", "build_isolating_nano_backend"]

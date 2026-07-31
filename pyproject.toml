@@ -15,12 +15,11 @@ dependencies = [
     "uvicorn[standard]>=0.32.0",
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
+    # soothe pulls soothe-nano transitively for the nano bridge path
+    "soothe>=0.9.13",
 ]
 
 [project.optional-dependencies]
-nano = [
-    "soothe-nano>=1.1.0,<1.2.0",
-]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",

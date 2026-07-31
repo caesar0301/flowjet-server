@@ -3,16 +3,15 @@ UV_RUN ?= uv run
 HOST ?= 0.0.0.0
 PORT ?= 8080
 
-.PHONY: help sync sync-dev sync-nano format format-check lint lint-fix \
-	test test-sdk test-unit check run serve run-nano examples \
+.PHONY: help sync sync-dev format format-check lint lint-fix \
+	test test-sdk test-unit check run serve run-fake run-nano run-soothe examples \
 	examples-sdk examples-http examples-e2e build clean
 
 help:
 	@echo "flowjet-server"
 	@echo ""
-	@echo "  make sync           - Sync runtime dependencies"
+	@echo "  make sync           - Sync runtime dependencies (includes soothe)"
 	@echo "  make sync-dev       - Sync with dev extras (pytest, openai, ruff)"
-	@echo "  make sync-nano      - Sync with nano + dev extras"
 	@echo "  make format         - Format with ruff"
 	@echo "  make format-check   - Check formatting (CI)"
 	@echo "  make lint           - Lint with ruff"
@@ -21,8 +20,10 @@ help:
 	@echo "  make test-unit      - Run unit/API tests (exclude live SDK suite)"
 	@echo "  make test-sdk       - Run OpenAI SDK compatibility tests"
 	@echo "  make check          - format-check + lint + test"
-	@echo "  make run / serve    - Start with deterministic fake backend"
-	@echo "  make run-nano       - Start with real soothe-nano agent"
+	@echo "  make run / serve    - Start with default nano backend (thread-pool)"
+	@echo "  make run-fake       - Start with deterministic fake/Echo backend"
+	@echo "  make run-nano       - Same as run (explicit FLOWJET_BACKEND=nano)"
+	@echo "  make run-soothe     - Start with full SootheRunner"
 	@echo "  make examples       - Show how to run end-to-end examples"
 	@echo "  make examples-sdk   - E2E via OpenAI Python SDK"
 	@echo "  make examples-http  - E2E via raw HTTP (httpx)"
@@ -35,9 +36,6 @@ sync:
 
 sync-dev:
 	uv sync --extra dev
-
-sync-nano:
-	uv sync --extra nano --extra dev
 
 format:
 	$(UV_RUN) ruff format src/ tests/ examples/
@@ -55,7 +53,8 @@ test:
 	$(UV_RUN) pytest -q
 
 test-unit:
-	$(UV_RUN) pytest -q tests/test_agent_runtime_fake.py tests/test_projection.py tests/test_api_responses.py
+	$(UV_RUN) pytest -q tests/test_agent_runtime_fake.py tests/test_projection.py \
+		tests/test_api_responses.py tests/test_isolation.py
 
 test-sdk:
 	$(UV_RUN) pytest -q tests/test_openai_sdk_compat.py
@@ -65,12 +64,18 @@ check: format-check lint test
 run serve:
 	FLOWJET_HOST=$(HOST) FLOWJET_PORT=$(PORT) $(UV_RUN) flowjet-server
 
+run-fake:
+	FLOWJET_BACKEND=fake FLOWJET_HOST=$(HOST) FLOWJET_PORT=$(PORT) $(UV_RUN) flowjet-server
+
 run-nano:
 	FLOWJET_BACKEND=nano FLOWJET_HOST=$(HOST) FLOWJET_PORT=$(PORT) $(UV_RUN) flowjet-server
 
+run-soothe:
+	FLOWJET_BACKEND=soothe FLOWJET_HOST=$(HOST) FLOWJET_PORT=$(PORT) $(UV_RUN) flowjet-server
+
 examples:
-	@echo "Start a real agent in another terminal:  make sync-nano && make run-nano"
-	@echo "(Use make run only for deterministic fake/Echo demos.)"
+	@echo "Start the server in another terminal:  make sync-dev && make run"
+	@echo "(Or: make run-soothe / make run-fake. Default backend is nano.)"
 	@echo "Then:"
 	@echo "  make examples-sdk     # OpenAI SDK end-to-end"
 	@echo "  make examples-http    # Raw HTTP end-to-end"

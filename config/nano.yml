@@ -49,18 +49,10 @@ persistence:
     pool_max_lifetime_seconds: 900
 
 security:
-  allow_paths_outside_workspace: true
+  allow_paths_outside_workspace: false
 
 observability:
   log_file_level: DEBUG
-  langfuse:
-    enabled: false
-    public_key: pk-lf-soothe-local
-    secret_key: sk-lf-soothe-local
-    host: http://localhost:3300
-    trace_name: soothe-dev
-    tags:
-      - soothe
 
 vector_stores:
   - name: sqlite_vec_dev
@@ -73,4 +65,4 @@ tools:
   wizsearch:
     default_engines:
       - duckduckgo
-      - bing
+      - tavily

@@ -214,7 +214,7 @@ Pydantic models:
 | Option | Env | Default |
 |--------|-----|---------|
 | `api_key` | `FLOWJET_API_KEY` | `None` (auth off) |
-| `backend` | `FLOWJET_BACKEND` | `fake` until nano ready; `nano` selects bridge |
+| `backend` | `FLOWJET_BACKEND` | `nano` (default); `fake` / `soothe` also supported |
 | `host` / `port` | `FLOWJET_HOST` / `FLOWJET_PORT` | `0.0.0.0` / `8080` |
 | `models` | `FLOWJET_MODELS` | `default` (comma-separated ids) |
 

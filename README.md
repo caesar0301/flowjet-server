@@ -1,11 +1,13 @@
 # FlowJet Server
 
-OpenAI Responses–compatible HTTP service. Protocol adapter over pluggable agent runtimes (Phase 1: fake backend + optional soothe-nano bridge).
+OpenAI Responses–compatible HTTP service. Protocol adapter over pluggable agent runtimes (default: soothe-nano CoreAgent; also fake and full SootheRunner) with thread-pool isolation. `soothe` is a default dependency; `soothe-nano` is pulled in transitively.
 
 ## Specs
 
 - [RFC-001](docs/specs/RFC-001-openai-compatible-api.md)
+- [RFC-002](docs/specs/RFC-002-isolated-thread-pool-runtime.md) — thread-pool isolation
 - [IG-001](docs/impl/IG-001-openai-compatible-server.md)
+- [IG-002](docs/impl/IG-002-isolated-thread-pool-runtime.md)
 
 ## Quick start
 
@@ -14,14 +16,14 @@ make sync-dev
 make run
 ```
 
-This starts the deterministic fake backend. To use the real soothe-nano agent:
+This starts the default **nano** backend (isolated thread pool). Alternatives:
 
 ```bash
-make sync-nano
-make run-nano
+make run-fake      # deterministic Echo backend for local demos/tests
+make run-soothe    # full SootheRunner
 ```
 
-In another terminal, run the end-to-end API examples against either server:
+In another terminal, run the end-to-end API examples:
 
 ```bash
 make examples-sdk    # OpenAI Python SDK walkthrough
@@ -45,10 +47,15 @@ Useful Make targets: `make help`, `make test`, `make test-sdk`, `make check`, `m
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `FLOWJET_API_KEY` | unset | If set, require Bearer auth |
-| `FLOWJET_BACKEND` | `fake` | `fake` or `nano` |
+| `FLOWJET_BACKEND` | `nano` | `fake`, `nano`, or `soothe` |
 | `FLOWJET_MODELS` | `default` | Comma-separated logical model ids |
 | `FLOWJET_HOST` | `0.0.0.0` | Bind host |
 | `FLOWJET_PORT` | `8080` | Bind port |
+| `FLOWJET_HOME` | `~/.flowjet` | Root for per-session workspaces |
+| `FLOWJET_THREAD_POOL_MIN` | `2` | Min isolation worker threads |
+| `FLOWJET_THREAD_POOL_MAX` | `8` | Max isolation worker threads |
+| `FLOWJET_REUSE_RUNNER` | `true` | Reuse agent adapter per worker |
+| `FLOWJET_REQUEST_TIMEOUT` | `0` | Per-run timeout seconds (`0` = none) |
 
 ## License
 
