@@ -1,6 +1,8 @@
 name: Build Docker Image
 
-# Manual branch builds. Push to Aliyun Container Registry when secrets are set.
+# Images are built manually (workflow_dispatch) by default and automatically
+# ONLY when a new release is published. There is NO build on every push/commit.
+# Push to Aliyun Container Registry when secrets are set.
 
 on:
   workflow_dispatch:
@@ -13,6 +15,8 @@ on:
         options:
           - "true"
           - "false"
+  release:
+    types: [published]
 
 env:
   REGISTRY: registry.cn-hangzhou.aliyuncs.com
@@ -38,17 +42,32 @@ jobs:
         id: branch
         env:
           GH_REF_NAME: ${{ github.ref_name }}
+          GH_REF_TYPE: ${{ github.ref_type }}
         run: |
           set -euo pipefail
           normalized="$(echo "${GH_REF_NAME}" | sed 's/[^a-zA-Z0-9._-]/-/g' | sed 's/^-\+\|-\+$//g')"
-          if [ "${normalized}" = "main" ]; then
+          if [ "${GH_REF_TYPE}" = "tag" ]; then
+            # Release event: use the tag name verbatim (e.g. v0.1.0) and drop the leading "v"
+            # for a semver alias (e.g. 0.1.0).
+            image_tag="${normalized}"
+            semver="$(echo "${normalized}" | sed -E 's/^v//')"
+            echo "name=${normalized}" >> "${GITHUB_OUTPUT}"
+            echo "image_tag=${image_tag}" >> "${GITHUB_OUTPUT}"
+            echo "semver_tag=${semver}" >> "${GITHUB_OUTPUT}"
+            echo "Release tag ${GH_REF_NAME} -> image tag ${image_tag} (semver alias ${semver})"
+          elif [ "${normalized}" = "main" ]; then
             image_tag="latest"
+            echo "name=${normalized}" >> "${GITHUB_OUTPUT}"
+            echo "image_tag=${image_tag}" >> "${GITHUB_OUTPUT}"
+            echo "semver_tag=" >> "${GITHUB_OUTPUT}"
+            echo "Branch ${GH_REF_NAME} -> tag ${image_tag}"
           else
             image_tag="latest-${normalized}"
+            echo "name=${normalized}" >> "${GITHUB_OUTPUT}"
+            echo "image_tag=${image_tag}" >> "${GITHUB_OUTPUT}"
+            echo "semver_tag=" >> "${GITHUB_OUTPUT}"
+            echo "Branch ${GH_REF_NAME} -> tag ${image_tag}"
           fi
-          echo "name=${normalized}" >> "${GITHUB_OUTPUT}"
-          echo "image_tag=${image_tag}" >> "${GITHUB_OUTPUT}"
-          echo "Branch ${GH_REF_NAME} -> tag ${image_tag}"
 
       - name: Checkout
         uses: actions/checkout@v5
@@ -61,13 +80,20 @@ jobs:
         env:
           REGISTRY_USER: ${{ secrets.ALIYUN_REGISTRY_USERNAME }}
           REGISTRY_PASS: ${{ secrets.ALIYUN_REGISTRY_PASSWORD }}
+          GH_REF_TYPE: ${{ github.ref_type }}
+          GH_EVENT_NAME: ${{ github.event_name }}
         run: |
           ready=false
           if [ -n "${REGISTRY_USER}" ] && [ -n "${REGISTRY_PASS}" ]; then ready=true; fi
           echo "registry_secrets_ready=${ready}" >> "${GITHUB_OUTPUT}"
 
           want=false
-          if [ "${{ github.event.inputs.push_image }}" = "true" ]; then want=true; fi
+          # Always push for release-published events; honor the manual input otherwise.
+          if [ "${GH_EVENT_NAME}" = "release" ] || [ "${GH_REF_TYPE}" = "tag" ]; then
+            want=true
+          elif [ "${{ github.event.inputs.push_image }}" = "true" ]; then
+            want=true
+          fi
           echo "want_push=${want}" >> "${GITHUB_OUTPUT}"
 
           should=false
@@ -102,6 +128,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=${{ steps.branch.outputs.image_tag }}
+            type=raw,value=${{ steps.branch.outputs.semver_tag }},enable=${{ steps.branch.outputs.semver_tag != '' }}
             type=sha,prefix=
 
       - name: Build and push image (multi-platform)
