@@ -27,4 +27,5 @@ build
 
 # Local env
 .env
+deploy/.env
 **/.DS_Store
