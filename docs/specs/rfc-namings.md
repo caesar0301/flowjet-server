@@ -39,6 +39,10 @@ Authoritative terminology reference for flowjet-server RFC specifications.
 | WorkspaceResolver | RFC-002 | Maps session (+ optional metadata.workspace) to an absolute workspace path |
 | IsolatingRuntimeBackend | RFC-002 | `RuntimeBackend` that admits, resolves workspace, and submits to ThreadPool |
 | FLOWJET_HOME | RFC-002 | Root directory for per-session workspaces and local data |
+| ResponseBridge | RFC-003 | Worker→asyncio delivery with control-frame guarantees and event backpressure |
+| HealthWatchdog | RFC-003 | Periodic dead-worker detection and baseline capacity respawn |
+| InteractionModeGate | RFC-003 | Pins `interaction_mode` per session (first turn wins) |
+| PoolMetrics | RFC-003 | Read-only snapshot of pool utilization and recovery counters |
 
 ### Deprecated / Avoid
 

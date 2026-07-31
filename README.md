@@ -13,6 +13,7 @@ In another terminal:
 
 ```bash
 make examples-sdk    # OpenAI Python SDK walkthrough
+make examples-modes  # Ask vs Agent interaction_mode (real nano)
 make examples-http   # Raw HTTP (health + /v1 + SSE)
 ```
 
@@ -41,7 +42,7 @@ curl http://127.0.0.1:8080/health
 | `flowjet-pgvector` | Checkpoints, metadata, vectors, memory |
 | `flowjet-server` | OpenAI Responses HTTP on port 8080 |
 
-Nano config is mounted from `deploy/nano.yml` (DashScope + Postgres). The image also bakes a default under `/var/lib/soothe/config/nano.yml`.
+Nano config is mounted from `deploy/nano.yml` (DashScope + Postgres + pgvector) for the Docker stack. The image bakes a SQLite + sqlite_vec default under `/var/lib/soothe/config/nano.yml` so `make run` works without a Postgres sidecar.
 
 ## OpenAI protocol + FlowJet options
 
@@ -103,7 +104,7 @@ Requires **soothe-nano ≥ 1.1.1**. The server builds a `DualModeCoreAgent` and 
 | `agent` | Full coding agent: read/write tools, shell/`file_ops` when enabled in nano.yml |
 | `ask` | Hard read-only: inspect with `ls` / `read_file` / `glob` / `grep` / `file_info`; no writes or shell |
 
-Mode is pinned per `session` (thread). To switch modes, use a **new** `session` (or a fresh client conversation id).
+Mode is pinned per `session` (thread). To switch modes, use a **new** `session` (or a fresh client conversation id). Live walkthrough: `make examples-modes`.
 
 Streaming example with Ask + progress:
 
@@ -138,8 +139,12 @@ with client.responses.stream(
 | `FLOWJET_NANO_CONFIG` | unset | Optional nano.yml (else `$SOOTHE_HOME/config/nano.yml`) |
 | `FLOWJET_THREAD_POOL_MIN` | `2` | Min isolation worker threads |
 | `FLOWJET_THREAD_POOL_MAX` | `8` | Max isolation worker threads |
+| `FLOWJET_THREAD_POOL_IDLE_TIMEOUT` | `300` | Scaled-worker idle exit seconds (`0` = never) |
+| `FLOWJET_MAX_REQUESTS_PER_WORKER` | `100` | Recycle worker after N turns (`0` = unlimited) |
 | `FLOWJET_REUSE_RUNNER` | `true` | Reuse agent adapter per worker |
-| `FLOWJET_REQUEST_TIMEOUT` | `0` | Per-run timeout seconds (`0` = none) |
+| `FLOWJET_REQUEST_TIMEOUT` | `0` | Per-run timeout seconds (`0` = none; set in production) |
+| `FLOWJET_READY_TIMEOUT` | `30` | Max wait for post-turn worker ready |
+| `FLOWJET_ALLOW_EXTERNAL_WORKSPACE` | `false` | Allow `metadata.workspace` outside `FLOWJET_HOME` |
 
 FlowJet always forces nano's `security.allow_paths_outside_workspace` to `false`, even if the loaded nano.yml requests otherwise.
 

@@ -37,13 +37,19 @@ embedding_profile:
   - model_role: dashscope:text-embedding-v4
     embedding_dims: 1536
 
-# Local develop defaults to SQLite (one process mode for the whole runtime).
-# Flip to postgresql + pgvector when exercising the Postgres path against
-# docker compose / PgBouncer — do not mix backends in one process.
+# Development default: SQLite persistence (nano built-in mode for the whole
+# runtime). The image bakes this so `make run` works without a Postgres sidecar.
+# Production overrides via deploy/nano.yml (PostgreSQL + pgvector mount).
+# Do not mix backends in one process.
 persistence:
   default_backend: sqlite
   # Unused while default_backend is sqlite; kept for a quick Postgres flip:
-  postgres_base_dsn: "postgresql://postgres:postgres@127.0.0.1:6432"
+  postgres_base_dsn: "postgresql://postgres:postgres@127.0.0.1:5432"
+  postgres_databases:
+    checkpoints: soothe_checkpoints
+    metadata: soothe_metadata
+    vectors: flowjet_vectors
+    memory: soothe_memory
   postgres:
     pool_max_idle_seconds: 90
     pool_max_lifetime_seconds: 900

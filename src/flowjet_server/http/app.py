@@ -23,6 +23,7 @@ def build_backend(settings: Settings) -> RuntimeBackend:
         config_path=settings.nano_config,
         home=settings.home_path(),
         pool_settings=settings.pool_settings(),
+        allow_external_workspace=settings.allow_external_workspace,
     )
 
 
@@ -54,8 +55,12 @@ def create_app(
     app.include_router(create_router(auth_dependency=auth))
 
     @app.get("/health")
-    async def health() -> dict[str, str]:
-        return {"status": "ok"}
+    async def health() -> dict:
+        body: dict = {"status": "ok"}
+        metrics = getattr(backend, "pool_metrics", None)
+        if callable(metrics):
+            body["pool"] = metrics()
+        return body
 
     @app.exception_handler(OpenAIError)
     async def openai_error_handler(_request: Request, exc: OpenAIError) -> JSONResponse:

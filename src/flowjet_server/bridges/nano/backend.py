@@ -67,6 +67,7 @@ def build_isolating_nano_backend(
     config_path: str | Path | None = None,
     home: Path | str | None = None,
     pool_settings: Any = None,
+    allow_external_workspace: bool = False,
 ) -> Any:
     """Construct IsolatingRuntimeBackend with NanoAgentAdapter factory."""
     from flowjet_server.agent_runtime.isolation import IsolatingRuntimeBackend, PoolSettings
@@ -81,4 +82,5 @@ def build_isolating_nano_backend(
         adapter_factory=factory,
         pool_settings=settings,
         home=home,
+        allow_external_workspace=allow_external_workspace,
     )

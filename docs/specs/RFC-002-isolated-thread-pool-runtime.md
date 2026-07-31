@@ -211,6 +211,7 @@ Resolved workspace is `/Users/me/project` when allowed.
 
 * **RFC-001**: Defines Agent Runtime Protocol and OpenAI surface. This RFC adds isolation behind `RuntimeBackend` without changing the public HTTP contract.
 * Implementation: [IG-002](../impl/IG-002-isolated-thread-pool-runtime.md).
+* Production hardening: [RFC-003](RFC-003-production-isolation-hardening.md).
 
 ---
 
@@ -225,3 +226,4 @@ Resolved workspace is `/Users/me/project` when allowed.
 
 * soothe-daemon thread pool / RFC-221 patterns (reference only; not a dependency)
 * [RFC-001](RFC-001-openai-compatible-api.md)
+* [RFC-003](RFC-003-production-isolation-hardening.md)

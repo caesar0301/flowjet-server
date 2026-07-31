@@ -8,6 +8,7 @@ from typing import Any
 from uuid import uuid4
 
 from flowjet_server.agent_runtime.events import RunFailed, RunRequest
+from flowjet_server.agent_runtime.isolation.errors import IsolationError
 from flowjet_server.agent_runtime.protocol import RuntimeBackend
 from flowjet_server.openai_compat.errors import OpenAIError
 from flowjet_server.openai_compat.projection import ProjectionEngine
@@ -125,6 +126,12 @@ class ResponseService:
                 async for runtime_event in self.backend.stream_run(request):
                     for payload in engine.handle(runtime_event):
                         yield payload
+            except IsolationError as exc:
+                raise OpenAIError(
+                    exc.message,
+                    code=exc.code,
+                    status_code=400,
+                ) from exc
             except Exception as exc:  # noqa: BLE001
                 for payload in engine.handle(RunFailed(message=str(exc) or type(exc).__name__)):
                     yield payload

@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 from flowjet_server.agent_runtime.events import ModelInfo, RunRequest, RuntimeEvent
 from flowjet_server.agent_runtime.isolation.adapter import AdapterFactory
 from flowjet_server.agent_runtime.isolation.admission import SessionAdmission
-from flowjet_server.agent_runtime.isolation.pool import PoolSettings, ThreadPool
+from flowjet_server.agent_runtime.isolation.mode_gate import InteractionModeGate
+from flowjet_server.agent_runtime.isolation.pool import PoolMetrics, PoolSettings, ThreadPool
 from flowjet_server.agent_runtime.isolation.request import IsolatedRunRequest
 from flowjet_server.agent_runtime.isolation.workspace import WorkspaceResolver
 
@@ -26,11 +28,16 @@ class IsolatingRuntimeBackend:
         home: Path | str | None = None,
         admission: SessionAdmission | None = None,
         pool: ThreadPool | None = None,
+        allow_external_workspace: bool = False,
+        mode_gate: InteractionModeGate | None = None,
     ) -> None:
         self._models = models or ["default"]
         home_path = Path(home).expanduser() if home else Path.home() / ".flowjet"
-        self._workspaces = WorkspaceResolver(home_path)
+        self._workspaces = WorkspaceResolver(
+            home_path, allow_external_workspace=allow_external_workspace
+        )
         self._admission = admission or SessionAdmission()
+        self._mode_gate = mode_gate or InteractionModeGate()
         self._pool = pool or ThreadPool(adapter_factory, pool_settings)
         self._started = False
 
@@ -41,6 +48,18 @@ class IsolatingRuntimeBackend:
     @property
     def workspaces(self) -> WorkspaceResolver:
         return self._workspaces
+
+    def pool_metrics(self) -> dict[str, Any]:
+        m: PoolMetrics = self._pool.metrics()
+        return {
+            "total_workers": m.total_workers,
+            "idle_workers": m.idle_workers,
+            "busy_workers": m.busy_workers,
+            "dead_workers": m.dead_workers,
+            "requests_completed": m.requests_completed,
+            "ready_timeouts": m.ready_timeouts,
+            "events_dropped": m.events_dropped,
+        }
 
     async def _ensure_started(self) -> None:
         if not self._started:
@@ -57,7 +76,10 @@ class IsolatingRuntimeBackend:
         await self._ensure_started()
         session = request.session or f"fj-{uuid4()}"
         run_id = request.run_id or f"resp_{uuid4().hex}"
-        workspace = self._workspaces.resolve(session, request.metadata)
+        metadata = dict(request.metadata or {})
+        mode = await self._mode_gate.resolve(session, metadata)
+        metadata["interaction_mode"] = mode
+        workspace = self._workspaces.resolve(session, metadata)
         isolated = IsolatedRunRequest(
             run_id=run_id,
             session=session,
@@ -65,7 +87,7 @@ class IsolatingRuntimeBackend:
             model=request.model,
             workspace=workspace,
             thread_id=session,
-            metadata=request.metadata,
+            metadata=metadata,
         )
         async with self._admission.admit(session):
             async for event in self._pool.submit(isolated):

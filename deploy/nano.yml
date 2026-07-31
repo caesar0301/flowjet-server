@@ -58,6 +58,12 @@ embedding_profile:
 persistence:
   default_backend: postgresql
   postgres_base_dsn: "postgresql://postgres:postgres@flowjet-pgvector:5432"
+  # Override the vectors DB name to match the pgvector store DSN below.
+  postgres_databases:
+    checkpoints: soothe_checkpoints
+    metadata: soothe_metadata
+    vectors: flowjet_vectors
+    memory: soothe_memory
   postgres:
     pool_max_idle_seconds: 90
     pool_max_lifetime_seconds: 900

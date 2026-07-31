@@ -172,6 +172,8 @@ def main() -> None:
     print(f"final={output_text(dev_final)!r}")
 
     # ------------------------------------------------------- flowjet ask mode
+    # Full ask vs agent walkthrough: examples/e2e_ask_agent_modes.py
+    #   (make examples-modes)
     section("flowjet.interaction_mode=ask  (hard read-only nano)")
     ask = client.responses.create(
         model=model,
@@ -185,6 +187,7 @@ def main() -> None:
         },
     )
     print(f"status={ask.status} text={output_text(ask)!r}")
+    print("(see make examples-modes for ask + agent + pin conflict)")
 
     # ----------------------------------------------------------- error path
     section("Error: unknown model → NotFoundError")

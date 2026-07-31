@@ -22,8 +22,11 @@ class Settings(BaseSettings):
     thread_pool_min: int = 2
     thread_pool_max: int = 8
     thread_pool_idle_timeout: float = 300.0
+    max_requests_per_worker: int = 100
     reuse_runner: bool = True
     request_timeout: float = 0.0
+    ready_timeout: float = 30.0
+    allow_external_workspace: bool = False
     nano_config: str | None = None
 
     def model_ids(self) -> list[str]:
@@ -37,6 +40,8 @@ class Settings(BaseSettings):
             min_size=max(1, self.thread_pool_min),
             max_size=max(self.thread_pool_min, self.thread_pool_max),
             idle_timeout_seconds=self.thread_pool_idle_timeout,
+            max_requests_per_worker=self.max_requests_per_worker,
             reuse_runner=self.reuse_runner,
             request_timeout_seconds=self.request_timeout,
+            ready_timeout_seconds=self.ready_timeout,
         )
