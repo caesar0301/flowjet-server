@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 from typing import Any
 
-from flowjet_server.agent_runtime.events import RuntimeEvent
+from flowjet_server.agent_runtime.events import RunCompleted, RunFailed, RuntimeEvent
 from flowjet_server.agent_runtime.isolation.request import IsolatedRunRequest
 from flowjet_server.bridges.nano.mapping import iter_nano_runtime_events
 
@@ -33,35 +33,71 @@ class NanoAgentAdapter:
         agent: Any | None = None,
         *,
         config_path: str | Path | None = None,
+        agent_factory: Callable[[], Any] | None = None,
     ) -> None:
         self._agent = agent
         self._config_path = config_path
+        self._agent_factory = agent_factory
+        self._active = False
+        self._tainted = False
+        self._generation = 1 if agent is not None else 0
 
     def _ensure(self) -> Any:
         if self._agent is None:
-            self._agent = create_nano_agent_instance(self._config_path)
+            self._agent = (
+                self._agent_factory()
+                if self._agent_factory is not None
+                else create_nano_agent_instance(self._config_path)
+            )
+            self._generation += 1
         return self._agent
 
     async def astream(self, req: IsolatedRunRequest) -> AsyncIterator[RuntimeEvent]:
+        if self._active:
+            raise RuntimeError("NanoAgentAdapter cannot execute concurrent requests")
+        self._active = True
+        completed = False
         agent = self._ensure()
-        async for event in iter_nano_runtime_events(
-            agent,
-            run_id=req.run_id,
-            model=req.model,
-            session=req.session,
-            input_text=req.input_text,
-            workspace=str(req.workspace),
-            thread_id=req.effective_thread_id(),
-        ):
-            yield event
+        try:
+            async for event in iter_nano_runtime_events(
+                agent,
+                run_id=req.run_id,
+                model=req.model,
+                session=req.session,
+                input_text=req.input_text,
+                workspace=str(req.workspace),
+                thread_id=req.effective_thread_id(),
+            ):
+                if isinstance(event, RunFailed):
+                    self._tainted = True
+                elif isinstance(event, RunCompleted):
+                    completed = True
+                yield event
+        finally:
+            # Cancellation can interrupt middleware cleanup and leave mutable
+            # graph state (for example edit-coalescing buffers) incomplete.
+            # Never reuse that graph for another request.
+            if not completed:
+                self._tainted = True
+            self._active = False
 
     def prepare_for_request(self) -> None:
-        # Nano agent has no SootheRunner.prepare_for_request; graph state is
-        # request-local via configurable.thread_id / workspace.
-        return None
+        """Finalize one turn and recycle an agent after abnormal termination."""
+        if self._active:
+            raise RuntimeError("cannot prepare an active NanoAgentAdapter")
+        if self._tainted:
+            self._agent = None
+            self._tainted = False
 
     async def cleanup(self) -> None:
         self._agent = None
+        self._tainted = False
+        self._active = False
+
+    @property
+    def generation(self) -> int:
+        """Number of nano agent instances materialized by this adapter."""
+        return self._generation
 
 
 def nano_adapter_factory(*, config_path: str | Path | None = None):

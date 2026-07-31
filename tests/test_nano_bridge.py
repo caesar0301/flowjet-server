@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -10,6 +12,7 @@ from flowjet_server.agent_runtime.events import (
     OutputTextDelta,
     Progress,
     RunCompleted,
+    RunFailed,
     RunRequest,
     RunStarted,
     ToolCompleted,
@@ -20,6 +23,8 @@ pytest.importorskip("langchain_core", reason="nano extra not installed")
 
 from langchain_core.messages import AIMessage, ToolMessage  # noqa: E402
 
+from flowjet_server.agent_runtime.isolation.request import IsolatedRunRequest  # noqa: E402
+from flowjet_server.bridges.nano.adapter import NanoAgentAdapter  # noqa: E402
 from flowjet_server.bridges.nano.backend import NanoRuntimeBackend  # noqa: E402
 
 
@@ -99,3 +104,81 @@ async def test_pre_tool_narration_is_dropped_and_tools_are_summarised():
 async def test_run_starts_before_any_output():
     events = await collect([message_chunk(AIMessage(content="ok"))])
     assert isinstance(events[0], RunStarted)
+
+
+class FailingAgent:
+    async def astream(self, _input, **_kwargs):
+        raise RuntimeError("broken graph")
+        yield  # pragma: no cover
+
+
+class BlockingAgent:
+    async def astream(self, _input, **_kwargs):
+        await asyncio.sleep(10)
+        yield message_chunk(AIMessage(content="too late"))
+
+
+def isolated_request() -> IsolatedRunRequest:
+    return IsolatedRunRequest(
+        run_id="resp_isolated",
+        session="fj-isolated",
+        input_text="hi",
+        model="default",
+        workspace=Path("/tmp/flowjet-test-workspace"),
+    )
+
+
+@pytest.mark.asyncio
+async def test_nano_adapter_recycles_agent_after_failed_turn():
+    agents = [
+        FailingAgent(),
+        StubAgent([message_chunk(AIMessage(content="recovered"))]),
+    ]
+    adapter = NanoAgentAdapter(agent_factory=lambda: agents.pop(0))
+
+    failed = [event async for event in adapter.astream(isolated_request())]
+    assert any(isinstance(event, RunFailed) for event in failed)
+    assert adapter.generation == 1
+
+    adapter.prepare_for_request()
+    recovered = [event async for event in adapter.astream(isolated_request())]
+    assert any(
+        isinstance(event, RunCompleted) and event.output_text == "recovered" for event in recovered
+    )
+    assert adapter.generation == 2
+
+
+@pytest.mark.asyncio
+async def test_nano_adapter_reuses_agent_after_clean_turn():
+    agent = StubAgent([message_chunk(AIMessage(content="ok"))])
+    adapter = NanoAgentAdapter(agent_factory=lambda: agent)
+
+    for _ in range(2):
+        events = [event async for event in adapter.astream(isolated_request())]
+        assert isinstance(events[-1], RunCompleted)
+        adapter.prepare_for_request()
+
+    assert adapter.generation == 1
+
+
+@pytest.mark.asyncio
+async def test_nano_adapter_recycles_agent_after_cancelled_turn():
+    agents = [
+        BlockingAgent(),
+        StubAgent([message_chunk(AIMessage(content="recovered"))]),
+    ]
+    adapter = NanoAgentAdapter(agent_factory=lambda: agents.pop(0))
+
+    async def consume() -> list[Any]:
+        return [event async for event in adapter.astream(isolated_request())]
+
+    task = asyncio.create_task(consume())
+    await asyncio.sleep(0)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    adapter.prepare_for_request()
+    recovered = [event async for event in adapter.astream(isolated_request())]
+    assert isinstance(recovered[-1], RunCompleted)
+    assert adapter.generation == 2

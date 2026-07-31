@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
+import threading
 from pathlib import Path
 
 import pytest
@@ -76,6 +78,105 @@ async def test_thread_pool_submit_yields_events(tmp_path: Path):
         assert any(isinstance(e, OutputTextDelta) for e in events)
         assert isinstance(events[-1], RunCompleted)
         assert (ws / "last_input.txt").read_text(encoding="utf-8") == "hello"
+    finally:
+        await pool.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_worker_gives_each_turn_a_fresh_context(tmp_path: Path):
+    turn_value: contextvars.ContextVar[str] = contextvars.ContextVar(
+        "flowjet_test_turn_value",
+        default="clean",
+    )
+    observations: list[str] = []
+
+    class ContextAdapter:
+        async def astream(self, req: IsolatedRunRequest):
+            observations.append(turn_value.get())
+            turn_value.set(req.session)
+            yield RunStarted(run_id=req.run_id, model=req.model, session=req.session)
+            yield RunCompleted(output_text="ok")
+
+        def prepare_for_request(self) -> None:
+            return None
+
+        async def cleanup(self) -> None:
+            return None
+
+    pool = ThreadPool(ContextAdapter, PoolSettings(min_size=1, max_size=1))
+    await pool.start()
+    try:
+        workspace = tmp_path / "context"
+        workspace.mkdir()
+        for index in range(2):
+            request = IsolatedRunRequest(
+                run_id=f"resp_context_{index}",
+                session=f"fj-context-{index}",
+                input_text="context",
+                model="default",
+                workspace=workspace,
+            )
+            _ = [event async for event in pool.submit(request)]
+        assert observations == ["clean", "clean"]
+    finally:
+        await pool.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_disconnected_consumer_cancels_before_worker_reuse(tmp_path: Path):
+    class DisconnectAdapter:
+        def __init__(self) -> None:
+            self.active = 0
+            self.max_active = 0
+            self.cancelled = threading.Event()
+
+        async def astream(self, req: IsolatedRunRequest):
+            self.active += 1
+            self.max_active = max(self.max_active, self.active)
+            try:
+                yield RunStarted(run_id=req.run_id, model=req.model, session=req.session)
+                if req.input_text == "slow":
+                    await asyncio.sleep(10)
+                yield RunCompleted(output_text="ok")
+            finally:
+                self.active -= 1
+                if req.input_text == "slow":
+                    self.cancelled.set()
+
+        def prepare_for_request(self) -> None:
+            return None
+
+        async def cleanup(self) -> None:
+            return None
+
+    adapter = DisconnectAdapter()
+    pool = ThreadPool(lambda: adapter, PoolSettings(min_size=1, max_size=1))
+    await pool.start()
+    try:
+        workspace = tmp_path / "disconnect"
+        workspace.mkdir()
+        slow = IsolatedRunRequest(
+            run_id="resp_slow",
+            session="fj-slow",
+            input_text="slow",
+            model="default",
+            workspace=workspace,
+        )
+        stream = pool.submit(slow)
+        assert isinstance(await anext(stream), RunStarted)
+        await asyncio.wait_for(stream.aclose(), timeout=2)
+        assert adapter.cancelled.is_set()
+
+        next_request = IsolatedRunRequest(
+            run_id="resp_next",
+            session="fj-next",
+            input_text="fast",
+            model="default",
+            workspace=workspace,
+        )
+        events = [event async for event in pool.submit(next_request)]
+        assert isinstance(events[-1], RunCompleted)
+        assert adapter.max_active == 1
     finally:
         await pool.shutdown()
 

@@ -138,9 +138,9 @@ class WorkspaceResolver:
 ## 6. ThreadPool Lifecycle
 
 1. `start()`: spawn `min_size` workers; each runs `_worker_main` with private event loop.
-2. Worker loop: pull `(request_id, IsolatedRunRequest)` from `queue.Queue`; run `adapter.astream` on worker loop; push `("event", RuntimeEvent) | ("done", None) | ("error", Exc) | ("cancelled", None)` into asyncio queue via `call_soon_threadsafe`.
-3. `submit`: await session dispatchable (no other busy worker for same session in pool map); acquire idle worker; stream from response queue until terminal.
-4. After stream: `prepare_for_request()` if `reuse_runner` else `cleanup()` + rebuild next time.
+2. Worker loop: pull `(request_id, IsolatedRunRequest)` from `queue.Queue`; create the `adapter.astream` task with a new `contextvars.Context()`; push `("event", RuntimeEvent) | ("done", None) | ("error", Exc) | ("cancelled", None)` into asyncio queue via `call_soon_threadsafe`.
+3. `submit`: await session dispatchable (no other busy worker for same session in pool map); acquire idle worker; stream through the terminal frame and wait for the worker `ready` barrier before releasing it. Consumer disconnect cancels the turn and drains to `ready`.
+4. After stream: `prepare_for_request()` if `reuse_runner` else `cleanup()` + rebuild next time. Nano marks its graph tainted on `RunFailed`, exceptions, or cancellation; preparation then discards it so the next turn gets a fresh graph. Clean nano turns retain the compiled graph.
 5. `cancel(run_id)` / `cancel_session(session)`: set that worker’s `threading.Event`.
 6. `shutdown()`: poison workers, join with timeout.
 
@@ -186,6 +186,10 @@ Reuse Phase-1 mapping (messages / updates / custom):
 | exception | `RunFailed` |
 
 Pass `config={"configurable": {"thread_id": tid, "workspace": str(ws)}}`.
+
+`NanoAgentAdapter` rejects overlapping calls on the same worker-local instance. Its
+generation counter is diagnostic only. Normal completed turns reuse the compiled
+graph; abnormal turns recycle it before the worker is made available.
 
 ### 8.2 Soothe StreamChunk → RuntimeEvent
 

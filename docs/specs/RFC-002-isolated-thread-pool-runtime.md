@@ -99,6 +99,7 @@ IsolatingRuntimeBackend
 | Cross-session concurrency | Up to `max_pool_size` workers |
 | Conversation / checkpoint | `session` == LangGraph / runner `thread_id` |
 | Filesystem | Per-session directory under `$FLOWJET_HOME/data/workspaces/` |
+| Request-local context | Each turn runs in a fresh Python `Context`; ContextVars are not inherited across worker turns |
 | Runner mutable state | One reused adapter **per worker**; `prepare_for_request()` after each turn |
 | Response store | Still process-global `InMemoryRunStore` (unchanged) |
 
@@ -130,13 +131,15 @@ AgentAdapter:
   cleanup() → awaitable
 ```
 
-* **Nano**: `create_nano_agent`; `astream` with `configurable.thread_id` and `configurable.workspace`; map stream chunks to runtime events (RFC-001 §9). Workspace ContextVar tokens must be task-local (not stored only on a shared middleware instance).
+* **Nano**: `create_nano_agent`; `astream` with `configurable.thread_id` and `configurable.workspace`; map stream chunks to runtime events (RFC-001 §9). A clean turn may reuse the worker-local graph. A failed or cancelled turn MUST taint and discard that graph before the worker accepts another turn.
 * **Soothe**: `SootheRunner.astream(input, thread_id=…, workspace=…)`; map `StreamChunk` to runtime events; call `prepare_for_request()` between turns.
 
 ### 5.5 Thread Pool
 
 * Persistent `threading.Thread` workers, each with `asyncio.new_event_loop()`.
 * Per-worker: request queue, response queue bridge to the FastAPI loop, `cancel_event`, cached `AgentAdapter`.
+* Create the per-turn stream task with a fresh `contextvars.Context()` so workspace, model override, logging, and tool registry ContextVars cannot leak from a prior turn.
+* A worker remains reserved through the terminal event until its `ready` barrier, emitted after adapter preparation. If the consumer disconnects first, cancel the turn and wait for that barrier before reuse.
 * `submit(IsolatedRunRequest) → AsyncIterator[RuntimeEvent]` on the ASGI event loop.
 * Same-session serialization before handoff (`await_session_dispatchable`).
 * Knobs: `min_pool_size`, `max_pool_size`, `idle_timeout_seconds`, `reuse_runner`, `request_timeout_seconds`.

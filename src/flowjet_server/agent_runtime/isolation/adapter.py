@@ -26,7 +26,7 @@ class AgentAdapter(Protocol):
         ...
 
     def prepare_for_request(self) -> None:
-        """Reset per-request mirrors without rebuilding the runner."""
+        """Finalize request state; recycle the runner when it is unsafe to reuse."""
         ...
 
     async def cleanup(self) -> None:

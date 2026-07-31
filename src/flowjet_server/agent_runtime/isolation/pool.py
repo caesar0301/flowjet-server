@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import contextvars
 import logging
 import queue
 import threading
@@ -124,7 +125,11 @@ def _worker_main(
                     bridge.emit("event", event)
                 bridge.emit("done")
 
-            stream_task = asyncio.create_task(_stream())
+            # Do not inherit context variables from a previous worker-loop task.
+            # Agent libraries use ContextVar for workspace, model overrides,
+            # logging identity, and per-turn tool registries. A fresh Context
+            # makes request isolation explicit even when an adapter is reused.
+            stream_task = asyncio.create_task(_stream(), context=contextvars.Context())
 
             async def _watch_cancel() -> None:
                 while not stream_task.done():
@@ -339,24 +344,43 @@ class ThreadPool:
 
         worker.request_queue.put(("request", request_id, req, bridge))
 
+        terminal_received = False
+        worker_ready = False
         try:
             while True:
                 msg_type, payload = await response_queue.get()
                 if msg_type == "event":
-                    yield payload  # type: ignore[misc]
+                    if not terminal_received:
+                        yield payload  # type: ignore[misc]
                 elif msg_type == "done":
-                    break
+                    terminal_received = True
                 elif msg_type == "cancelled":
-                    yield RunFailed(message="cancelled", code="cancelled")
-                    break
+                    if not terminal_received:
+                        yield RunFailed(message="cancelled", code="cancelled")
+                    terminal_received = True
                 elif msg_type == "error":
-                    exc = payload
-                    message = str(exc) if exc else "worker error"
-                    yield RunFailed(message=message, code="worker_error")
-                    break
+                    if not terminal_received:
+                        exc = payload
+                        message = str(exc) if exc else "worker error"
+                        yield RunFailed(message=message, code="worker_error")
+                    terminal_received = True
                 elif msg_type == "ready":
-                    continue
+                    worker_ready = True
+                    if terminal_received:
+                        break
         finally:
+            # A client may stop consuming after any event (for example an SSE
+            # disconnect). Cancel that turn and hold the worker reservation
+            # until its adapter has completed cleanup/prepare. Releasing it
+            # earlier would let the pool queue another request against a
+            # still-active worker-local runner.
+            if not worker_ready:
+                if not terminal_received:
+                    worker.cancel_event.set()
+                while not worker_ready:
+                    msg_type, _payload = await response_queue.get()
+                    worker_ready = msg_type == "ready"
+
             async with self._lock:
                 self._pending.pop(request_id, None)
                 self._run_to_worker.pop(req.run_id, None)
