@@ -33,7 +33,7 @@ Authoritative terminology reference for flowjet-server RFC specifications.
 | Run Store | RFC-001 | Persistence for Response resources (Phase 1: in-process) |
 | Session | RFC-001 | Opaque conversation/thread id (`flowjet.session`); nano maps to `thread_id` |
 | IsolatedRunRequest | RFC-002 | Request-carried session, thread_id, workspace, and input for pool workers |
-| AgentAdapter | RFC-002 | Protocol wrapping nano or soothe runners for isolated `astream` |
+| AgentAdapter | RFC-002 | Protocol wrapping the nano runner for isolated `astream` |
 | ThreadPool (isolation) | RFC-002 | Persistent worker threads with private asyncio loops for agent runs |
 | SessionAdmission | RFC-002 | One-in-flight-per-session gate before pool submit |
 | WorkspaceResolver | RFC-002 | Maps session (+ optional metadata.workspace) to an absolute workspace path |

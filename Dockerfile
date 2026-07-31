@@ -53,13 +53,12 @@ ENV PATH="/app/.venv/bin:${PATH}"
 FROM ${PYTHON_BASE} AS runtime
 
 LABEL org.opencontainers.image.title="FlowJet Server" \
-    org.opencontainers.image.description="OpenAI-compatible HTTP service over soothe" \
+    org.opencontainers.image.description="OpenAI-compatible HTTP service over soothe-nano" \
     org.opencontainers.image.source="https://github.com/mirasoth/flowjet-server"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     SOOTHE_HOME=/var/lib/soothe \
-    FLOWJET_BACKEND=nano \
     FLOWJET_HOST=0.0.0.0 \
     FLOWJET_PORT=8080
 

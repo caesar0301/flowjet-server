@@ -22,7 +22,7 @@ This RFC defines **thread-pool isolation** for agent execution behind `RuntimeBa
 
 * Isolation boundaries: session admission, cross-session concurrency, workspace FS, runner state
 * `IsolatedRunRequest` and `AgentAdapter` contracts (agent-agnostic)
-* Thread-pool execution model for `nano` and `soothe` backends
+* Thread-pool execution model for the soothe-nano backend
 * Workspace resolution rules and optional `flowjet.metadata.workspace` override
 * Cooperative cancel via `delete_run` for in-flight pool runs
 * Config knobs for pool size, reuse, timeouts, and `FLOWJET_HOME`
@@ -46,7 +46,7 @@ Phase 1 (`RFC-001`) runs soothe-nano through a single shared agent in the FastAP
 3. Reusing one runner per worker with `prepare_for_request()` between turns.
 4. Serializing same-loop turns while allowing cross-loop parallelism.
 
-flowjet-server needs the same isolation depth for production multi-session use, while remaining a thin OpenAI adapter and supporting both **soothe-nano** and **full SootheRunner** backends.
+flowjet-server needs the same isolation depth for production multi-session use, while remaining a thin OpenAI adapter over **soothe-nano**.
 
 ---
 
@@ -54,7 +54,7 @@ flowjet-server needs the same isolation depth for production multi-session use, 
 
 1. **Request-carried binding**: Session, thread id, and workspace travel on every run object; workers must not rely on process-global “current session.”
 2. **One-in-flight per session**: Same `session` cannot execute two turns concurrently; different sessions may, up to pool size.
-3. **Backend-agnostic isolation**: Thread pool and workspace rules sit above `AgentAdapter`; nano and soothe plug in without changing `openai_compat`.
+3. **Adapter-agnostic isolation**: Thread pool and workspace rules sit above `AgentAdapter`; the production adapter is soothe-nano.
 4. **Thin port, not daemon embed**: Reuse concepts from soothe-daemon; do not import its packages.
 5. **Preserve RFC-001 surface**: Clients keep `flowjet.session` / `flowjet.metadata`; isolation is invisible except for safer concurrency and optional workspace override.
 
@@ -89,7 +89,7 @@ IsolatingRuntimeBackend
   NanoAdapter   SootheAdapter
 ```
 
-`FakeRuntimeBackend` remains in-process (no pool).
+`FakeAgentAdapter` / `FakeRuntimeBackend` exist only as test doubles (injected in unit tests). Production always uses the isolating nano backend.
 
 ### 5.2 Isolation Boundaries
 
@@ -132,7 +132,6 @@ AgentAdapter:
 ```
 
 * **Nano**: `create_nano_agent`; `astream` with `configurable.thread_id` and `configurable.workspace`; map stream chunks to runtime events (RFC-001 §9). A clean turn may reuse the worker-local graph. A failed or cancelled turn MUST taint and discard that graph before the worker accepts another turn.
-* **Soothe**: `SootheRunner.astream(input, thread_id=…, workspace=…)`; map `StreamChunk` to runtime events; call `prepare_for_request()` between turns.
 
 ### 5.5 Thread Pool
 
@@ -157,7 +156,7 @@ Default agent security policy SHOULD deny paths outside the workspace (`allow_pa
 
 * HTTP `flowjet.session` → `RunRequest.session` → `IsolatedRunRequest.session` / `thread_id`.
 * If omitted, allocate `fj-<uuid>` (RFC-001).
-* Reusing a session continues checkpoint history **when** the underlying adapter’s checkpointer persists (soothe path; nano may gain checkpointer later). Isolation does not require persistence to be correct for FS/runner safety.
+* Reusing a session continues checkpoint history **when** the underlying nano graph’s checkpointer persists. Isolation does not require persistence to be correct for FS/runner safety.
 
 ### 5.8 Cancellation
 
@@ -169,7 +168,7 @@ Default agent security policy SHOULD deny paths outside the workspace (`allow_pa
 
 | Variable / setting | Default | Meaning |
 |--------------------|---------|---------|
-| `FLOWJET_BACKEND` | `nano` | `fake` \| `nano` \| `soothe` |
+| `FLOWJET_NANO_CONFIG` | unset | Optional path to nano.yml |
 | `FLOWJET_HOME` | `~/.flowjet` | Root for workspaces and local data |
 | `FLOWJET_THREAD_POOL_MIN` | `2` | Min workers |
 | `FLOWJET_THREAD_POOL_MAX` | `8` | Max workers |

@@ -16,10 +16,7 @@ def create_nano_agent_instance(config_path: str | Path | None = None) -> Any:
         from soothe_nano import create_nano_agent
         from soothe_nano.config import SOOTHE_HOME, SootheConfig
     except ImportError as exc:  # pragma: no cover
-        raise RuntimeError(
-            "soothe-nano is not installed (expected via the soothe dependency). "
-            "Reinstall flowjet-server or set FLOWJET_BACKEND=fake."
-        ) from exc
+        raise RuntimeError("soothe-nano is not installed. Reinstall flowjet-server.") from exc
     path = Path(config_path).expanduser() if config_path else SOOTHE_HOME / "config" / "nano.yml"
     config = SootheConfig.from_yaml_file(str(path)) if path.is_file() else SootheConfig()
     return create_nano_agent(config)

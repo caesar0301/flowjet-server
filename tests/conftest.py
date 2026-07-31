@@ -83,7 +83,7 @@ class LiveServer:
 @pytest.fixture
 def live_server() -> Iterator[LiveServer]:
     app = create_app(
-        settings=Settings(api_key=None, backend="fake", models="default,researcher"),
+        settings=Settings(api_key=None, models="default,researcher"),
         backend=FakeRuntimeBackend(models=["default", "researcher"]),
     )
     server = LiveServer(app)
@@ -103,7 +103,7 @@ def openai_client(live_server: LiveServer) -> OpenAI:
 def authed_live_server() -> Iterator[tuple[LiveServer, str]]:
     api_key = "test-secret-key"
     app = create_app(
-        settings=Settings(api_key=api_key, backend="fake", models="default"),
+        settings=Settings(api_key=api_key, models="default"),
         backend=FakeRuntimeBackend(models=["default"]),
     )
     server = LiveServer(app)

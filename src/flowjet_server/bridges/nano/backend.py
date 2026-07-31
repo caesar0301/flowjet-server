@@ -17,7 +17,7 @@ from flowjet_server.bridges.nano.mapping import iter_nano_runtime_events
 
 
 class NanoRuntimeBackend:
-    """RuntimeBackend backed by soothe-nano (optional dependency), in-process."""
+    """RuntimeBackend backed by soothe-nano, in-process (tests / DI)."""
 
     def __init__(
         self,

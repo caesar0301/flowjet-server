@@ -15,7 +15,7 @@ from flowjet_server.agent_runtime.isolation.workspace import WorkspaceResolver
 
 
 class IsolatingRuntimeBackend:
-    """Pool-backed RuntimeBackend for nano / soothe adapters."""
+    """Pool-backed RuntimeBackend for the soothe-nano AgentAdapter."""
 
     def __init__(
         self,

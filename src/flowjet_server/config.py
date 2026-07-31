@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="FLOWJET_", extra="ignore")
 
     api_key: str | None = None
-    backend: str = "nano"  # fake | nano | soothe
     models: str = "default"
     host: str = "0.0.0.0"
     port: int = 8080
@@ -26,7 +25,6 @@ class Settings(BaseSettings):
     reuse_runner: bool = True
     request_timeout: float = 0.0
     nano_config: str | None = None
-    soothe_config: str | None = None
 
     def model_ids(self) -> list[str]:
         return [m.strip() for m in self.models.split(",") if m.strip()]

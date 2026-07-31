@@ -77,7 +77,7 @@ flowjet_server.openai_compat ──► flowjet_server.agent_runtime
 
 - **MUST** keep `openai_compat` free of soothe-nano imports
 - **MUST NOT** put CoT, prompts, or tool args on runtime events or SSE
-- **MAY** run without nano using `FakeRuntimeBackend` (`FLOWJET_BACKEND=fake`)
+- **MAY** inject `FakeRuntimeBackend` in tests via `create_app(backend=...)`
 
 ---
 
@@ -214,7 +214,7 @@ Pydantic models:
 | Option | Env | Default |
 |--------|-----|---------|
 | `api_key` | `FLOWJET_API_KEY` | `None` (auth off) |
-| `backend` | `FLOWJET_BACKEND` | `nano` (default); `fake` / `soothe` also supported |
+| `nano_config` | `FLOWJET_NANO_CONFIG` | Optional path to nano.yml |
 | `host` / `port` | `FLOWJET_HOST` / `FLOWJET_PORT` | `0.0.0.0` / `8080` |
 | `models` | `FLOWJET_MODELS` | `default` (comma-separated ids) |
 

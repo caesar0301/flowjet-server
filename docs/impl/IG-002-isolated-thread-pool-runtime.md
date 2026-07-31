@@ -2,7 +2,7 @@
 
 > Implementation guide for thread-pool isolation behind `RuntimeBackend`.
 >
-> **Crate/Module**: `flowjet_server.agent_runtime.isolation`, `bridges.nano`, `bridges.soothe`
+> **Crate/Module**: `flowjet_server.agent_runtime.isolation`, `bridges.nano`
 > **Source**: Derived from [RFC-002](../specs/RFC-002-isolated-thread-pool-runtime.md)
 > **Related RFCs**: RFC-001, RFC-002
 > **Language**: Python 3.11+
@@ -20,7 +20,7 @@ Concrete types, pool lifecycle, adapter mapping, config, and tests for RFC-002.
 **In Scope**:
 
 - `agent_runtime/isolation/` (request, workspace, admission, pool, isolating backend)
-- `NanoAgentAdapter` / `SootheAgentAdapter`
+- `NanoAgentAdapter` (production) and `FakeAgentAdapter` / `FakeRuntimeBackend` (tests only)
 - Settings + `config/nano.yml` workspace harden
 - Unit/concurrency tests with fake adapter
 
@@ -32,7 +32,7 @@ Concrete types, pool lifecycle, adapter mapping, config, and tests for RFC-002.
 
 ### 1.3 Spec Compliance
 
-MUST NOT contradict RFC-001 or RFC-002. `openai_compat` MUST remain free of nano/soothe/isolation pool imports beyond `RuntimeBackend`.
+MUST NOT contradict RFC-001 or RFC-002. `openai_compat` MUST remain free of nano/isolation pool imports beyond `RuntimeBackend`.
 
 ---
 
@@ -44,7 +44,7 @@ src/flowjet_server/
 ├── agent_runtime/
 │   ├── events.py
 │   ├── protocol.py
-│   ├── fake.py
+│   ├── fake.py                 # FakeRuntimeBackend (tests / DI only)
 │   └── isolation/
 │       ├── __init__.py
 │       ├── request.py          # IsolatedRunRequest
@@ -54,16 +54,12 @@ src/flowjet_server/
 │       ├── pool.py             # ThreadPool
 │       └── backend.py          # IsolatingRuntimeBackend
 ├── bridges/
-│   ├── nano/
-│   │   ├── __init__.py
-│   │   ├── backend.py          # thin factory / re-exports (compat)
-│   │   ├── adapter.py          # NanoAgentAdapter
-│   │   └── mapping.py          # stream → RuntimeEvent (shared)
-│   └── soothe/
+│   └── nano/
 │       ├── __init__.py
-│       ├── adapter.py          # SootheAgentAdapter
-│       └── mapping.py
-└── http/app.py                 # build_backend wiring
+│       ├── backend.py          # build_isolating_nano_backend + in-process test helper
+│       ├── adapter.py          # NanoAgentAdapter
+│       └── mapping.py          # stream → RuntimeEvent
+└── http/app.py                 # always wires isolating nano backend
 ```
 
 ---
@@ -191,18 +187,14 @@ Pass `config={"configurable": {"thread_id": tid, "workspace": str(ws)}}`.
 generation counter is diagnostic only. Normal completed turns reuse the compiled
 graph; abnormal turns recycle it before the worker is made available.
 
-### 8.2 Soothe StreamChunk → RuntimeEvent
-
-Map `(namespace, mode, data)` similarly: custom `soothe.*` → Progress (sanitized); messages AI/Tool → tools; accumulate final text → OutputTextDelta / RunCompleted. Skip prompts / tool args.
-
 ---
 
 ## 9. Configuration
 
 | Env | Settings field | Default |
 |-----|----------------|---------|
-| `FLOWJET_BACKEND` | `backend` | `nano` |
 | `FLOWJET_HOME` | `home` | `~/.flowjet` |
+| `FLOWJET_NANO_CONFIG` | `nano_config` | unset → `$SOOTHE_HOME/config/nano.yml` |
 | `FLOWJET_THREAD_POOL_MIN` | `thread_pool_min` | `2` |
 | `FLOWJET_THREAD_POOL_MAX` | `thread_pool_max` | `8` |
 | `FLOWJET_THREAD_POOL_IDLE_TIMEOUT` | `thread_pool_idle_timeout` | `300` |
@@ -211,7 +203,7 @@ Map `(namespace, mode, data)` similarly: custom `soothe.*` → Progress (sanitiz
 
 `config/nano.yml`: `security.allow_paths_outside_workspace: false`.
 
-Default dependency: `soothe` (pulls `soothe-nano` transitively). Dev optional extra: `[dev]`.
+Default dependency: `soothe-nano`. Dev optional extra: `[dev]`.
 
 ---
 
@@ -224,7 +216,7 @@ Default dependency: `soothe` (pulls `soothe-nano` transitively). Dev optional ex
 | `test_thread_pool_fake_adapter` | submit yields events; cancel |
 | `test_pool_cross_session_parallel` | two sessions concurrent |
 | `test_isolating_backend_sse` | ASGI + IsolatingRuntimeBackend(fake adapter) |
-| Nano/Soothe mapping unit | recorded chunks → events (no live LLM) |
+| Nano mapping unit | recorded chunks → events (no live LLM) |
 
 ---
 
@@ -232,13 +224,10 @@ Default dependency: `soothe` (pulls `soothe-nano` transitively). Dev optional ex
 
 ```python
 def build_backend(settings: Settings) -> RuntimeBackend:
-    if settings.backend == "fake":
-        return FakeRuntimeBackend(...)
-    factory = nano_adapter_factory(settings)  # or soothe
-    return IsolatingRuntimeBackend(
+    return build_isolating_nano_backend(
         models=settings.model_ids(),
-        adapter_factory=factory,
-        pool_settings=settings.pool_settings(),
+        config_path=settings.nano_config,
         home=settings.home_path(),
+        pool_settings=settings.pool_settings(),
     )
 ```

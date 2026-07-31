@@ -7,8 +7,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from flowjet_server.agent_runtime.fake import FakeRuntimeBackend
 from flowjet_server.agent_runtime.protocol import RuntimeBackend
+from flowjet_server.bridges.nano import build_isolating_nano_backend
 from flowjet_server.config import Settings
 from flowjet_server.http.auth import require_api_key
 from flowjet_server.openai_compat.errors import OpenAIError, error_body
@@ -18,25 +18,12 @@ from flowjet_server.openai_compat.store import InMemoryRunStore
 
 
 def build_backend(settings: Settings) -> RuntimeBackend:
-    if settings.backend == "nano":
-        from flowjet_server.bridges.nano import build_isolating_nano_backend
-
-        return build_isolating_nano_backend(
-            models=settings.model_ids(),
-            config_path=settings.nano_config,
-            home=settings.home_path(),
-            pool_settings=settings.pool_settings(),
-        )
-    if settings.backend == "soothe":
-        from flowjet_server.bridges.soothe import build_isolating_soothe_backend
-
-        return build_isolating_soothe_backend(
-            models=settings.model_ids(),
-            config_path=settings.soothe_config,
-            home=settings.home_path(),
-            pool_settings=settings.pool_settings(),
-        )
-    return FakeRuntimeBackend(models=settings.model_ids())
+    return build_isolating_nano_backend(
+        models=settings.model_ids(),
+        config_path=settings.nano_config,
+        home=settings.home_path(),
+        pool_settings=settings.pool_settings(),
+    )
 
 
 def create_app(

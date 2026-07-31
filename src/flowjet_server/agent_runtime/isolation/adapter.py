@@ -19,7 +19,7 @@ AdapterFactory = Callable[[], "AgentAdapter"]
 
 
 class AgentAdapter(Protocol):
-    """Common runner surface for nano / soothe (and fakes)."""
+    """Common runner surface for the nano AgentAdapter (and test fakes)."""
 
     def astream(self, req: IsolatedRunRequest) -> AsyncIterator[RuntimeEvent]:
         """Execute one turn and yield Agent Runtime events."""

@@ -30,7 +30,7 @@ def parse_sse(body: str) -> list[dict[str, Any]]:
 @pytest.fixture
 def app():
     return create_app(
-        settings=Settings(api_key=None, backend="fake", models="default,researcher"),
+        settings=Settings(api_key=None, models="default,researcher"),
         backend=FakeRuntimeBackend(models=["default", "researcher"]),
     )
 
@@ -100,7 +100,7 @@ async def test_create_stream_progress(client: AsyncClient) -> None:
 
 async def test_auth_required() -> None:
     app = create_app(
-        settings=Settings(api_key="secret", backend="fake", models="default"),
+        settings=Settings(api_key="secret", models="default"),
         backend=FakeRuntimeBackend(models=["default"]),
     )
     transport = ASGITransport(app=app)
