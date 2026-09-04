@@ -52,7 +52,7 @@ services:
         max-file: "3"
 
   flowjet-server:
-    image: registry.cn-hangzhou.aliyuncs.com/lacogito/flowjet-server:latest
+    image: registry.cn-hangzhou.aliyuncs.com/lacogito/flowjet-server:v0.1.1
     restart: unless-stopped
     depends_on:
       flowjet-pgvector:
