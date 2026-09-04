@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "flowjet-server"
-version = "0.1.0"
+version = "0.1.1"
 description = "OpenAI-compatible HTTP service projecting agent runtimes onto the Responses API"
 readme = "README.md"
 license = { text = "MIT" }
@@ -37,7 +37,7 @@ Homepage = "https://github.com/mirasoth/flowjet-server"
 packages = ["src/flowjet_server"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/flowjet_server/", "README.md", "docs/", "LICENSE"]
+include = ["src/flowjet_server/", "README.md", "docs/", "LICENSE", "CHANGELOG.md"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

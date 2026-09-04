@@ -45,7 +45,7 @@ def create_app(
             if hasattr(result, "__await__"):
                 await result
 
-    app = FastAPI(title="flowjet-server", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="flowjet-server", version="0.1.1", lifespan=lifespan)
     app.state.settings = settings
     app.state.api_key = settings.api_key
     app.state.backend = backend
