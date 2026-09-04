@@ -56,4 +56,4 @@ If the server was started with `FLOWJET_API_KEY=secret`, use the same value for 
 | Delete | `DELETE /v1/responses/{id}` | `client.responses.delete(id)` |
 | FlowJet options | body `flowjet` | `extra_body={"flowjet": {...}}` |
 
-`flowjet.interaction_mode` may be `"agent"` (default) or `"ask"` (hard read-only; soothe-nano ≥ 1.1.1). Mode is **pinned per session** — flip on the same session returns `400 interaction_mode_conflict`; use a new `flowjet.session` to switch. Walkthrough: [`e2e_ask_agent_modes.py`](e2e_ask_agent_modes.py). See also the root [README](../README.md#openai-protocol--flowjet-options).
+`flowjet.interaction_mode` may be `"agent"` (default) or `"ask"` (hard read-only; soothe-nano ≥ 1.2.23). Mode is **pinned per session** — flip on the same session returns `400 interaction_mode_conflict`; use a new `flowjet.session` to switch. Walkthrough: [`e2e_ask_agent_modes.py`](e2e_ask_agent_modes.py). See also the root [README](../README.md#openai-protocol--flowjet-options).

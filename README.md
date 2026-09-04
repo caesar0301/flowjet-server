@@ -1,6 +1,6 @@
 # FlowJet Server
 
-OpenAI Responses–compatible HTTP service backed by **[soothe-nano](https://github.com/mirasoth/soothe-nano)** (≥1.1.1). Clients use the official OpenAI SDK (or raw HTTP); FlowJet projects Agent Runtime events onto the Responses API, with optional namespaced extensions under `flowjet` / `response.flowjet.*`.
+OpenAI Responses–compatible HTTP service backed by **[soothe-nano](https://github.com/mirasoth/soothe-nano)** (≥1.2.23). Clients use the official OpenAI SDK (or raw HTTP); FlowJet projects Agent Runtime events onto the Responses API, with optional namespaced extensions under `flowjet` / `response.flowjet.*`.
 
 ## Quick start (local)
 
@@ -97,7 +97,7 @@ client.responses.create(
 
 **Ask vs Agent (`interaction_mode`)**
 
-Requires **soothe-nano ≥ 1.1.1**. The server builds a `DualModeCoreAgent` and routes each request by `flowjet.interaction_mode`:
+Requires **soothe-nano ≥ 1.2.23**. The server builds a `DualModeCoreAgent` and routes each request by `flowjet.interaction_mode`:
 
 | Mode | Behavior |
 |------|----------|

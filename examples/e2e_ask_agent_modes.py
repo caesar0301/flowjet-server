@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Real end-to-end demo of FlowJet ``interaction_mode``: ask vs agent.
 
-Requires a running flowjet-server backed by soothe-nano ≥ 1.1.1
+Requires a running flowjet-server backed by soothe-nano ≥ 1.2.23
 (``DualModeCoreAgent``).
 
 Covers:
