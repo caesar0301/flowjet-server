@@ -4,7 +4,7 @@ HOST ?= 0.0.0.0
 PORT ?= 8080
 
 .PHONY: help sync sync-dev format format-check lint lint-fix \
-	test test-unit test-sdk test-concurrent test-features test-production \
+	test test-unit test-integration test-sdk test-concurrent test-features test-production \
 	check run serve examples \
 	examples-sdk examples-modes examples-http examples-e2e build clean
 
@@ -17,8 +17,9 @@ help:
 	@echo "  make format-check   - Check formatting (CI)"
 	@echo "  make lint           - Lint with ruff"
 	@echo "  make lint-fix       - Auto-fix lint issues"
-	@echo "  make test           - Run all tests"
-	@echo "  make test-unit      - Run unit/API tests (exclude live SDK suite)"
+	@echo "  make test           - Run all tests (unit + integration)"
+	@echo "  make test-unit      - Run unit tests (isolated components, no HTTP)"
+	@echo "  make test-integration - Run integration tests (HTTP/SSE, live uvicorn)"
 	@echo "  make test-sdk       - Run OpenAI SDK compatibility tests"
 	@echo "  make test-concurrent - Run concurrent load tests against real uvicorn"
 	@echo "  make test-features  - Comprehensive server feature ASGI suite"
@@ -55,22 +56,22 @@ test:
 	$(UV_RUN) pytest -q
 
 test-unit:
-	$(UV_RUN) pytest -q tests/test_agent_runtime_fake.py tests/test_projection.py \
-		tests/test_api_responses.py tests/test_isolation.py \
-		tests/test_production_isolation.py tests/test_nano_bridge.py \
-		tests/test_server_features.py
+	$(UV_RUN) pytest -q tests/unit/
+
+test-integration:
+	$(UV_RUN) pytest -q tests/integration/
 
 test-sdk:
-	$(UV_RUN) pytest -q tests/test_openai_sdk_compat.py
+	$(UV_RUN) pytest -q tests/integration/test_openai_sdk_compat.py
 
 test-concurrent:
-	$(UV_RUN) pytest -q tests/test_concurrent.py
+	$(UV_RUN) pytest -q tests/integration/test_concurrent.py
 
 test-features:
-	$(UV_RUN) pytest -q tests/test_server_features.py
+	$(UV_RUN) pytest -q tests/integration/test_server_features.py
 
 test-production:
-	$(UV_RUN) pytest -q tests/test_production_isolation.py
+	$(UV_RUN) pytest -q tests/unit/test_production_isolation.py tests/integration/test_production_isolation_http.py
 
 check: format-check lint test
 

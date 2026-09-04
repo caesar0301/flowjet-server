@@ -305,31 +305,6 @@ async def test_isolating_backend_stream(tmp_path: Path):
         await backend.shutdown()
 
 
-@pytest.mark.asyncio
-async def test_isolating_backend_via_http(tmp_path: Path):
-    from httpx import ASGITransport, AsyncClient
-
-    from flowjet_server.http.app import create_app
-
-    backend = IsolatingRuntimeBackend(
-        models=["default"],
-        adapter_factory=FakeAgentAdapter,
-        pool_settings=PoolSettings(min_size=1, max_size=2),
-        home=tmp_path,
-    )
-    app = create_app(backend=backend)
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        resp = await client.post(
-            "/v1/responses",
-            json={
-                "model": "default",
-                "input": "http-hi",
-                "flowjet": {"session": "fj-http"},
-            },
-        )
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["status"] == "completed"
-        assert "http-hi" in body["output"][0]["content"][0]["text"]
-    await backend.shutdown()
+# NOTE: test_isolating_backend_via_http (HTTP integration across the ASGI app,
+# IsolatingRuntimeBackend, and FakeAgentAdapter) has been moved to
+# tests/integration/test_isolation_http.py.

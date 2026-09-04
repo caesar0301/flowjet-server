@@ -15,30 +15,13 @@ interleaving) rather than business logic, which is already covered elsewhere.
 
 from __future__ import annotations
 
-import json
 import threading
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any
 
 import httpx
 from openai import OpenAI
 from openai.types.responses import Response
-
-
-def parse_sse(body: str) -> list[dict[str, Any]]:
-    """Parse an SSE body into a list of event dicts (mirrors conftest/helpers)."""
-    events: list[dict[str, Any]] = []
-    for block in body.split("\n\n"):
-        if not block.strip():
-            continue
-        data_line = None
-        for line in block.splitlines():
-            if line.startswith("data: "):
-                data_line = line[6:]
-        if data_line:
-            events.append(json.loads(data_line))
-    return events
 
 
 def _output_text(response: Response) -> str:
@@ -194,6 +177,7 @@ def test_concurrent_delete_is_idempotent_per_id(openai_client: OpenAI) -> None:
 
 def test_concurrent_mixed_load_does_not_corrupt_store(
     live_server: object,
+    parse_sse,
 ) -> None:
     """Mixed create/stream/retrieve/delete traffic must not corrupt the store.
 

@@ -2,29 +2,12 @@
 
 from __future__ import annotations
 
-import json
-from typing import Any
-
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from flowjet_server.agent_runtime.fake import FakeRuntimeBackend
 from flowjet_server.config import Settings
 from flowjet_server.http.app import create_app
-
-
-def parse_sse(body: str) -> list[dict[str, Any]]:
-    events: list[dict[str, Any]] = []
-    for block in body.split("\n\n"):
-        if not block.strip():
-            continue
-        data_line = None
-        for line in block.splitlines():
-            if line.startswith("data: "):
-                data_line = line[6:]
-        if data_line:
-            events.append(json.loads(data_line))
-    return events
 
 
 @pytest.fixture
@@ -78,7 +61,7 @@ async def test_create_non_stream(client: AsyncClient) -> None:
     assert missing.status_code == 404
 
 
-async def test_create_stream_progress(client: AsyncClient) -> None:
+async def test_create_stream_progress(client: AsyncClient, parse_sse) -> None:
     r = await client.post(
         "/v1/responses",
         json={

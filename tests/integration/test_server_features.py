@@ -7,9 +7,7 @@ so the full HTTP → pool → adapter path is exercised without a live LLM.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Any
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -21,20 +19,6 @@ from flowjet_server.agent_runtime.isolation import (
 )
 from flowjet_server.config import Settings
 from flowjet_server.http.app import create_app
-
-
-def parse_sse(body: str) -> list[dict[str, Any]]:
-    events: list[dict[str, Any]] = []
-    for block in body.split("\n\n"):
-        if not block.strip():
-            continue
-        data_line = None
-        for line in block.splitlines():
-            if line.startswith("data: "):
-                data_line = line[6:]
-        if data_line:
-            events.append(json.loads(data_line))
-    return events
 
 
 @pytest.fixture
@@ -144,7 +128,7 @@ async def test_feature_list_input_messages(client: AsyncClient) -> None:
 # --- Streaming + projections ---
 
 
-async def test_feature_stream_report_lifecycle(client: AsyncClient) -> None:
+async def test_feature_stream_report_lifecycle(client: AsyncClient, parse_sse) -> None:
     r = await client.post(
         "/v1/responses",
         json={
@@ -163,7 +147,7 @@ async def test_feature_stream_report_lifecycle(client: AsyncClient) -> None:
     assert "response.flowjet.progress" not in types
 
 
-async def test_feature_stream_progress_projection(client: AsyncClient) -> None:
+async def test_feature_stream_progress_projection(client: AsyncClient, parse_sse) -> None:
     r = await client.post(
         "/v1/responses",
         json={
@@ -178,7 +162,7 @@ async def test_feature_stream_progress_projection(client: AsyncClient) -> None:
     assert "response.completed" in types
 
 
-async def test_feature_stream_developer_projection(client: AsyncClient) -> None:
+async def test_feature_stream_developer_projection(client: AsyncClient, parse_sse) -> None:
     r = await client.post(
         "/v1/responses",
         json={
